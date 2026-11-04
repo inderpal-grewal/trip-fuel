@@ -97,7 +97,7 @@ details[open] summary{margin-bottom:12px}
     </div>
     <div class="seg mode" role="group" aria-label="Trip type" id="mode">
       <button type="button" data-v="local">Local</button>
-      <button type="button" data-v="zim">Zimbabwe</button>
+      <button type="button" data-v="zim">South</button>
     </div>
   </header>
 
@@ -115,7 +115,7 @@ details[open] summary{margin-bottom:12px}
         <div class="row3">
           <div class="field"><label for="zFrom">From</label><input id="zFrom" autocomplete="off" placeholder="e.g. Dar es Salaam"></div>
           <div class="field"><label for="zVia">Via</label><input id="zVia" autocomplete="off"></div>
-          <div class="field"><label for="zTo">To (Zimbabwe)</label><input id="zTo" autocomplete="off" placeholder="e.g. Harare, Zimbabwe"></div>
+          <div class="field"><label for="zTo">To</label><input id="zTo" autocomplete="off" placeholder="e.g. Harare, Zimbabwe"></div>
         </div>
       </div>
 
@@ -134,7 +134,7 @@ details[open] summary{margin-bottom:12px}
       <div id="zimKm" class="row" hidden>
         <div class="field"><label for="kmA" id="kmALbl">Start → Lusaka</label>
           <div class="km"><input id="kmA" type="number" inputmode="decimal" min="0" step="0.1" placeholder="0"><span>km</span></div></div>
-        <div class="field"><label for="kmB" id="kmBLbl">Lusaka → Zimbabwe</label>
+        <div class="field"><label for="kmB" id="kmBLbl">Lusaka → Destination</label>
           <div class="km"><input id="kmB" type="number" inputmode="decimal" min="0" step="0.1" placeholder="0"><span>km</span></div></div>
       </div>
 
@@ -153,7 +153,7 @@ details[open] summary{margin-bottom:12px}
           <button type="button" data-v="empty">Empty<small class="re">0.3 L/km</small></button>
           <button type="button" data-v="loaded">Loaded<small class="rl">0.5 L/km</small></button>
         </div>
-        <p class="hint" id="retHint" hidden>The Lusaka → start leg. Lusaka ⇄ Zimbabwe is always included at the Zimbabwe ratio.</p>
+        <p class="hint" id="retHint" hidden>The Lusaka → start leg. Lusaka → destination and back to Lusaka is always included at the South ratio.</p>
       </div>
 
       <div class="field">
@@ -167,7 +167,7 @@ details[open] summary{margin-bottom:12px}
           <div class="field"><label for="rLoaded">Loaded L/km</label><input id="rLoaded" type="number" inputmode="decimal" step="0.01" min="0"></div>
           <div class="field"><label for="rEmpty">Empty L/km</label><input id="rEmpty" type="number" inputmode="decimal" step="0.01" min="0"></div>
           <div class="field"><label for="rLusaka">To Lusaka L/km</label><input id="rLusaka" type="number" inputmode="decimal" step="0.01" min="0"></div>
-          <div class="field"><label for="rZim">Lusaka ⇄ Zimbabwe L/km</label><input id="rZim" type="number" inputmode="decimal" step="0.01" min="0"></div>
+          <div class="field"><label for="rZim">South: Lusaka ⇄ destination L/km</label><input id="rZim" type="number" inputmode="decimal" step="0.01" min="0"></div>
         </div>
         <div class="field" style="margin-top:12px">
           <label for="apiKey">Google Maps API key</label>
@@ -230,8 +230,8 @@ function legs(){
   }else{
     const a=num("kmA"), b=num("kmB");
     L.push({name:`${F} → ${V}`,load:"to Lusaka",km:a,ratio:r.lusaka});
-    L.push({name:`${V} → ${T}`,load:"Zimbabwe",km:b,ratio:r.zim});
-    L.push({name:`${T} → ${V}`,load:"Zimbabwe",km:b,ratio:r.zim});
+    L.push({name:`${V} → ${T}`,load:"South",km:b,ratio:r.zim});
+    L.push({name:`${T} → ${V}`,load:"South",km:b,ratio:r.zim});
     if(state.ret!=="none")L.push({name:`${V} → ${F}`,load:state.ret,km:a,ratio:r[state.ret]});
   }
   L.forEach(l=>l.litres=l.km*l.ratio);
@@ -243,7 +243,7 @@ function render(){
   $("localForm").hidden=zim; $("localKm").hidden=zim; $("loadField").hidden=zim;
   $("zimForm").hidden=!zim; $("zimKm").hidden=!zim; $("retHint").hidden=!zim;
   $("retLbl").textContent=zim?"Lusaka → start":"Return to start";
-  const F=short(p.from)||"Start", T=short(p.to)||"Zimbabwe", V=short(p.via)||"Lusaka";
+  const F=short(p.from)||"Start", T=short(p.to)||"Destination", V=short(p.via)||"Lusaka";
   $("kmALbl").textContent=`${F} → ${V}`; $("kmBLbl").textContent=`${V} → ${T}`;
   document.querySelectorAll(".rl").forEach(e=>e.textContent=r.loaded+" L/km");
   document.querySelectorAll(".re").forEach(e=>e.textContent=r.empty+" L/km");
@@ -272,7 +272,7 @@ function renderLog(){
   const log=store.get("tf_log2",[]);
   if(!log.length){$("logWrap").innerHTML='<p class="empty">No trips saved yet. Work out a trip above and tap “Save to trip log”.</p>';return}
   let h='<table><thead><tr><th>Date</th><th>Type</th><th>Truck</th><th>Route</th><th class="num">km</th><th class="num">Litres</th><th class="num">Cost TZS</th><th></th></tr></thead><tbody>';
-  log.forEach((t,i)=>{h+=`<tr><td>${esc(t.date)}</td><td><span class="pill ${t.type==="Zimbabwe"?"zim":""}">${t.type}</span></td><td>${esc(t.truck||"")}</td><td>${esc(t.route)}</td><td class="num">${fmt(t.km)}</td><td class="num">${fmt(t.litres)}</td><td class="num">${t.cost?fmt(t.cost,0):"—"}</td><td><button class="del" data-i="${i}" aria-label="Delete trip">×</button></td></tr>`});
+  log.forEach((t,i)=>{h+=`<tr><td>${esc(t.date)}</td><td><span class="pill ${t.type!=="Local"?"zim":""}">${t.type}</span></td><td>${esc(t.truck||"")}</td><td>${esc(t.route)}</td><td class="num">${fmt(t.km)}</td><td class="num">${fmt(t.litres)}</td><td class="num">${t.cost?fmt(t.cost,0):"—"}</td><td><button class="del" data-i="${i}" aria-label="Delete trip">×</button></td></tr>`});
   $("logWrap").innerHTML=h+"</tbody></table>";
 }
 $("logWrap").addEventListener("click",e=>{const b=e.target.closest(".del");if(!b)return;
@@ -285,7 +285,7 @@ $("saveBtn").addEventListener("click",()=>{
   const log=store.get("tf_log2",[]);
   log.unshift({id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),
     date:`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`,
-    type:state.mode==="zim"?"Zimbabwe":"Local",truck:$("truck").value.trim(),
+    type:state.mode==="zim"?"South":"Local",truck:$("truck").value.trim(),
     from:p.from,via:p.via,to:p.to,route:$("route").textContent,
     going:state.mode==="zim"?"":state.load,ret:state.ret,
     km:L.reduce((s,l)=>s+l.km,0),litres,price,cost:litres*price,
