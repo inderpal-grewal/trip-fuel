@@ -86,6 +86,8 @@ td.num,th.num{text-align:right;font-family:var(--mono)}
 .del{background:none;border:0;color:var(--muted);cursor:pointer;font-size:1.1rem;padding:4px 8px}
 details summary{cursor:pointer;color:var(--muted);font-size:.9rem}
 details[open] summary{margin-bottom:12px}
+.check{display:flex;align-items:center;gap:10px;font-size:.95rem;font-weight:600;letter-spacing:0;text-transform:none;color:var(--fg);cursor:pointer;min-height:40px}
+.check input{width:22px;height:22px;min-height:0;accent-color:var(--sign);margin:0}
 .setgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
 </style>
 </head>
@@ -111,14 +113,15 @@ details[open] summary{margin-bottom:12px}
           <div class="field"><label for="lTo">To</label><input id="lTo" list="localPlaces" autocomplete="off" placeholder="e.g. Nairobi, Kenya"></div>
         </div>
       </div>
-      <!-- ZIMBABWE -->
+      <!-- SOUTH -->
       <div id="zimForm" class="legs-in" hidden>
-        <div class="row3">
+        <div class="row">
           <div class="field"><label for="zFrom">From</label><input id="zFrom" list="southPlaces" autocomplete="off" placeholder="e.g. Nairobi, Kenya"></div>
-          <div class="field"><label for="zVia">Via (0.7 starts here)</label><input id="zVia" list="southPlaces" autocomplete="off"></div>
-          <div class="field"><label for="zTo">To</label><input id="zTo" list="southPlaces" autocomplete="off" placeholder="e.g. Lubumbashi, DR Congo"></div>
+          <div class="field"><label for="zTo">To</label><input id="zTo" list="southPlaces" autocomplete="off" placeholder="e.g. Harare, Zimbabwe"></div>
         </div>
-        <p class="hint">Via is where the 0.7 rate starts. Lusaka suits Zambia, Zimbabwe and Congo trips. If a route doesn't pass Lusaka, e.g. to Malawi, change Via to the right town.</p>
+        <label class="check" for="zimRoute"><input id="zimRoute" type="checkbox"> Zimbabwe trip via Lusaka</label>
+        <div class="field" id="viaField"><label for="zVia">Via</label><input id="zVia" list="southPlaces" autocomplete="off"></div>
+        <p class="hint" id="southHint"></p>
       </div>
 
       <div class="field"><label for="truck">Truck reg / note (optional)</label><input id="truck" autocomplete="off" placeholder="e.g. T 123 ABC"></div>
@@ -152,10 +155,9 @@ details[open] summary{margin-bottom:12px}
         <span class="lbl" id="retLbl">Return to start</span>
         <div class="seg three" role="group" aria-labelledby="retLbl" id="ret">
           <button type="button" data-v="none">None</button>
-          <button type="button" data-v="empty">Empty<small class="re">0.3 L/km</small></button>
-          <button type="button" data-v="loaded">Loaded<small class="rl">0.5 L/km</small></button>
+          <button type="button" data-v="empty">Empty<small class="re2">0.3 L/km</small></button>
+          <button type="button" data-v="loaded">Loaded<small class="rl2">0.5 L/km</small></button>
         </div>
-        <p class="hint" id="retHint" hidden>The via → start leg. Via → destination and back to via is always included at the South ratio.</p>
       </div>
 
       <div class="field">
@@ -168,8 +170,8 @@ details[open] summary{margin-bottom:12px}
         <div class="setgrid">
           <div class="field"><label for="rLoaded">Loaded L/km</label><input id="rLoaded" type="number" inputmode="decimal" step="0.01" min="0"></div>
           <div class="field"><label for="rEmpty">Empty L/km</label><input id="rEmpty" type="number" inputmode="decimal" step="0.01" min="0"></div>
-          <div class="field"><label for="rLusaka">South: start → via L/km</label><input id="rLusaka" type="number" inputmode="decimal" step="0.01" min="0"></div>
-          <div class="field"><label for="rZim">South: via ⇄ destination L/km</label><input id="rZim" type="number" inputmode="decimal" step="0.01" min="0"></div>
+          <div class="field"><label for="rZim">Lusaka ⇄ Zimbabwe, loaded L/km</label><input id="rZim" type="number" inputmode="decimal" step="0.01" min="0"></div>
+          <div class="field"><label for="rZimE">Lusaka ⇄ Zimbabwe, empty L/km</label><input id="rZimE" type="number" inputmode="decimal" step="0.01" min="0"></div>
         </div>
         <div class="field" style="margin-top:12px">
           <label for="apiKey">Google Maps API key</label>
@@ -215,7 +217,10 @@ const short=s=>(s||"").split(",")[0].trim();
 let state={mode:"local",load:"loaded",ret:"empty"};
 let isExample=false;
 
-function ratios(){return{loaded:num("rLoaded"),empty:num("rEmpty"),lusaka:num("rLusaka"),zim:num("rZim")}}
+function ratios(){return{loaded:num("rLoaded"),empty:num("rEmpty"),zLoaded:num("rZim"),zEmpty:num("rZimE")}}
+const ZIM_TOWNS=["zimbabwe","harare","bulawayo","beitbridge","mutare","gweru","masvingo","kwekwe","kadoma","chinhoyi","kariba","hwange","victoria falls","marondera","bindura","chegutu","norton","zvishavane","rusape"];
+const looksZim=t=>{t=(t||"").toLowerCase();return ZIM_TOWNS.some(z=>t.includes(z))};
+const zimTrip=()=>state.mode==="zim"&&$("zimRoute").checked;
 function setSeg(id,val){$(id).querySelectorAll("button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.v===val))}
 
 function places(){
@@ -227,30 +232,37 @@ function places(){
 function legs(){
   const r=ratios(), p=places(), L=[];
   const F=short(p.from)||"Start", T=short(p.to)||"Destination", V=short(p.via)||"Lusaka";
-  if(state.mode==="local"){
+  if(!zimTrip()){
     const km=num("kmL");
     L.push({name:`${F} → ${T}`,load:state.load,km,ratio:r[state.load]});
     if(state.ret!=="none")L.push({name:`${T} → ${F}`,load:state.ret,km,ratio:r[state.ret]});
   }else{
-    const a=num("kmA"), b=num("kmB");
-    L.push({name:`${F} → ${V}`,load:"to "+V,km:a,ratio:r.lusaka});
-    L.push({name:`${V} → ${T}`,load:"South",km:b,ratio:r.zim});
-    L.push({name:`${T} → ${V}`,load:"South",km:b,ratio:r.zim});
-    if(state.ret!=="none")L.push({name:`${V} → ${F}`,load:state.ret,km:a,ratio:r[state.ret]});
+    // Up to Lusaka: normal rates. Lusaka ⇄ Zimbabwe: Zimbabwe rates.
+    const a=num("kmA"), b=num("kmB"), z={loaded:r.zLoaded,empty:r.zEmpty};
+    L.push({name:`${F} → ${V}`,load:state.load,km:a,ratio:r[state.load]});
+    L.push({name:`${V} → ${T}`,load:"Zimbabwe "+state.load,km:b,ratio:z[state.load]});
+    if(state.ret!=="none"){
+      L.push({name:`${T} → ${V}`,load:"Zimbabwe "+state.ret,km:b,ratio:z[state.ret]});
+      L.push({name:`${V} → ${F}`,load:state.ret,km:a,ratio:r[state.ret]});
+    }
   }
   L.forEach(l=>l.litres=l.km*l.ratio);
   return L;
 }
 
 function render(){
-  const p=places(), r=ratios(), zim=state.mode==="zim";
-  $("localForm").hidden=zim; $("localKm").hidden=zim; $("loadField").hidden=zim;
-  $("zimForm").hidden=!zim; $("zimKm").hidden=!zim; $("retHint").hidden=!zim;
-  $("retLbl").textContent=zim?`${short($("zVia").value)||"Via"} → start`:"Return to start";
+  const p=places(), r=ratios(), south=state.mode==="zim", zim=zimTrip();
+  $("localForm").hidden=south; $("zimForm").hidden=!south;
+  $("localKm").hidden=zim; $("zimKm").hidden=!zim; $("viaField").hidden=!zim;
   const F=short(p.from)||"Start", T=short(p.to)||"Destination", V=short(p.via)||"Lusaka";
+  $("southHint").textContent=zim
+    ?`Up to ${V}: ${r.loaded} loaded, ${r.empty} empty. ${V} ⇄ Zimbabwe: ${r.zLoaded} loaded, ${r.zEmpty} empty.`
+    :`Malawi, Zambia and Congo trips use the normal rates: ${r.loaded} loaded, ${r.empty} empty.`;
   $("kmALbl").textContent=`${F} → ${V}`; $("kmBLbl").textContent=`${V} → ${T}`;
-  document.querySelectorAll(".rl").forEach(e=>e.textContent=r.loaded+" L/km");
-  document.querySelectorAll(".re").forEach(e=>e.textContent=r.empty+" L/km");
+  document.querySelectorAll(".rl").forEach(e=>e.textContent=zim?`${r.loaded} → ${r.zLoaded} L/km`:r.loaded+" L/km");
+  document.querySelectorAll(".re").forEach(e=>e.textContent=zim?`${r.empty} → ${r.zEmpty} L/km`:r.empty+" L/km");
+  document.querySelectorAll(".rl2").forEach(e=>e.textContent=zim?`${r.zLoaded} → ${r.loaded} L/km`:r.loaded+" L/km");
+  document.querySelectorAll(".re2").forEach(e=>e.textContent=zim?`${r.zEmpty} → ${r.empty} L/km`:r.empty+" L/km");
 
   const m=$("maps");
   if(p.from&&p.to){
@@ -260,14 +272,14 @@ function render(){
   }else{m.href="https://www.google.com/maps";m.setAttribute("aria-disabled","true")}
 
   const L=legs(), total=L.reduce((s,l)=>s+l.litres,0), km=L.reduce((s,l)=>s+l.km,0), price=num("price");
-  $("route").textContent=zim?`${F} → ${V} → ${T} → ${V}${state.ret!=="none"?" → "+F:""}`:`${F} → ${short(p.to)||"Destination"}${state.ret!=="none"?" → back":""}`;
+  $("route").textContent=zim?`${F} → ${V} → ${T}${state.ret!=="none"?` → ${V} → ${F}`:""}`:`${F} → ${short(p.to)||"Destination"}${state.ret!=="none"?" → back":""}`;
   $("total").innerHTML=fmt(total)+"<small>L</small>";
   let h=L.map(l=>`<div><span>${esc(l.name)} · ${fmt(l.km)} km × ${l.ratio}</span><b>${fmt(l.litres)} L</b></div>`).join("");
   h+=`<div class="sum"><span>Total distance</span><b>${fmt(km)} km</b></div>`;
   if(price)h+=`<div class="sum"><span>Fuel cost @ ${fmt(price,0)}/L</span><b>TZS ${fmt(total*price,0)}</b></div>`;
   $("lines").innerHTML=h;
   $("exTag").hidden=!isExample;
-  store.set("tf_prefs",{price:$("price").value,rLoaded:$("rLoaded").value,rEmpty:$("rEmpty").value,rLusaka:$("rLusaka").value,rZim:$("rZim").value,via:$("zVia").value,mode:state.mode});
+  store.set("tf_prefs",{price:$("price").value,rLoaded:$("rLoaded").value,rEmpty:$("rEmpty").value,rZimE:$("rZimE").value,rZim:$("rZim").value,via:$("zVia").value,mode:state.mode});
 }
 function esc(s){const d=document.createElement("div");d.textContent=s;return d.innerHTML}
 
@@ -283,15 +295,15 @@ $("logWrap").addEventListener("click",e=>{const b=e.target.closest(".del");if(!b
   const log=store.get("tf_log2",[]);log.splice(+b.dataset.i,1);store.set("tf_log2",log);renderLog()});
 
 $("saveBtn").addEventListener("click",()=>{
-  const L=legs(); if(!L.some(l=>l.km)){(state.mode==="zim"?$("kmA"):$("kmL")).focus();return}
+  const L=legs(); if(!L.some(l=>l.km)){(zimTrip()?$("kmA"):$("kmL")).focus();return}
   const p=places(), price=num("price"), litres=L.reduce((s,l)=>s+l.litres,0);
   const d=new Date(), pad=n=>String(n).padStart(2,"0");
   const log=store.get("tf_log2",[]);
   log.unshift({id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),
     date:`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`,
     type:state.mode==="zim"?"South":"Local",truck:$("truck").value.trim(),
-    from:p.from,via:p.via,to:p.to,route:$("route").textContent,
-    going:state.mode==="zim"?"":state.load,ret:state.ret,
+    from:p.from,via:zimTrip()?p.via:"",to:p.to,route:$("route").textContent,
+    going:state.load,ret:state.ret,
     km:L.reduce((s,l)=>s+l.km,0),litres,price,cost:litres*price,
     legs:L.map(l=>({name:l.name,load:l.load,km:l.km,ratio:l.ratio,litres:l.litres}))});
   store.set("tf_log2",log.slice(0,1000));renderLog();
@@ -354,7 +366,7 @@ async function routeKm(Route,o,d){
 }
 const hm=m=>m>=60?Math.floor(m/60)+" h "+(m%60)+" min":m+" min";
 async function getDistance(){
-  const p=places(), key=$("apiKey").value.trim(), zim=state.mode==="zim";
+  const p=places(), key=$("apiKey").value.trim(), zim=zimTrip();
   if(!p.from||!p.to||(zim&&!p.via)){setStatus(zim?"Enter From, Via and To first.":"Enter both From and To first.",true);return}
   if(!key){$("settings").open=true;$("apiKey").focus();setStatus("Add your Google Maps API key in Settings first.",true);return}
   const btn=$("getDist");btn.disabled=true;btn.textContent="Getting…";setStatus("Asking Google Maps for the driving route…");
@@ -386,19 +398,22 @@ $("mode").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)
 $("load").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;state.load=b.dataset.v;setSeg("load",state.load);render()});
 $("ret").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;state.ret=b.dataset.v;setSeg("ret",state.ret);render()});
 ["lFrom","lTo","zFrom","zVia","zTo","kmL","kmA","kmB"].forEach(id=>$(id).addEventListener("input",()=>{isExample=false;render()}));
-["price","rLoaded","rEmpty","rLusaka","rZim","truck"].forEach(id=>$(id).addEventListener("input",render));
+$("zTo").addEventListener("input",()=>{const z=looksZim($("zTo").value);if(z!==$("zimRoute").checked){$("zimRoute").checked=z;render()}});
+$("zimRoute").addEventListener("change",render);
+["price","rLoaded","rEmpty","rZimE","rZim","truck"].forEach(id=>$(id).addEventListener("input",render));
 
 // ---- start ----
 const pr=store.get("tf_prefs",{});
-$("rLoaded").value=pr.rLoaded||"0.5";$("rEmpty").value=pr.rEmpty||"0.3";$("rLusaka").value=pr.rLusaka||"0.5";$("rZim").value=pr.rZim||"0.7";
+$("rLoaded").value=pr.rLoaded||"0.5";$("rEmpty").value=pr.rEmpty||"0.3";$("rZimE").value=pr.rZimE||"0.5";$("rZim").value=pr.rZim||"0.7";
 $("price").value=pr.price||"";$("zVia").value=pr.via||"Lusaka, Zambia";state.mode=pr.mode||"local";
 $("apiKey").value=store.get("tf_key","");
 if(!$("apiKey").value)setStatus("Add your Google Maps API key in Settings to get distances automatically.");
 if(!store.get("tf_log2",[]).length){
   isExample=true;
   $("lFrom").value="Dar es Salaam, Tanzania";$("lTo").value="Nairobi, Kenya";$("kmL").value="880";
-  $("zFrom").value="Nairobi, Kenya";$("zTo").value="Lubumbashi, DR Congo";$("kmA").value="2400";$("kmB").value="600";
+  $("zFrom").value="Nairobi, Kenya";$("zTo").value="Harare, Zimbabwe";$("kmA").value="2400";$("kmB").value="490";$("kmL").value="880";
 }
+$("zimRoute").checked=looksZim($("zTo").value);
 setSeg("mode",state.mode);setSeg("load",state.load);setSeg("ret",state.ret);render();renderLog();
 </script>
 </body>
