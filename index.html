@@ -65,9 +65,19 @@ input:focus-visible,button:focus-visible,a:focus-visible{outline:2px solid var(-
 .big{font:700 3.6rem/1 var(--display);font-variant-numeric:tabular-nums}
 .big small{font-size:1.3rem;margin-left:4px}
 .lines{display:flex;flex-direction:column;border-top:1px solid color-mix(in srgb,var(--sign-fg) 30%,transparent)}
-.lines div{display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px dashed color-mix(in srgb,var(--sign-fg) 30%,transparent);font-variant-numeric:tabular-nums}
+.lines>div>div{display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px dashed color-mix(in srgb,var(--sign-fg) 30%,transparent);font-variant-numeric:tabular-nums}
 .lines b{font-family:var(--mono);font-weight:500;text-align:right;white-space:nowrap}
 .lines .sum{font-weight:600}
+.leg{display:grid!important;grid-template-columns:minmax(0,1fr) auto minmax(5.5em,auto);column-gap:10px;align-items:center}
+.rate::-webkit-inner-spin-button,.rate::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+.rate{-moz-appearance:textfield;appearance:textfield}
+.leg .ln{min-width:0;overflow-wrap:anywhere}
+.rx{display:flex;align-items:center;gap:4px;font-family:var(--mono)}
+.rate{width:66px;min-height:34px;padding:4px 6px;font:500 .9rem var(--mono);text-align:right;color:var(--sign-fg);background:color-mix(in srgb,var(--sign-fg) 12%,transparent);border:1px solid color-mix(in srgb,var(--sign-fg) 35%,transparent);border-radius:6px}
+.rate:focus-visible{outline:2px solid var(--sign-fg);outline-offset:1px}
+.leg.edited .rate{background:var(--amber);color:#1a1205;border-color:var(--amber)}
+.ratenote{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:.82rem;opacity:.85;flex-wrap:wrap}
+.ratenote button{font:600 .85rem var(--body);background:none;color:inherit;border:1px solid color-mix(in srgb,var(--sign-fg) 50%,transparent);border-radius:6px;padding:6px 10px;cursor:pointer}
 .tag{align-self:flex-start;font:600 .7rem var(--body);letter-spacing:.08em;text-transform:uppercase;background:var(--amber);color:#1a1205;border-radius:4px;padding:3px 8px}
 .save{font:600 1rem var(--body);background:var(--panel);color:var(--fg);border:0;border-radius:8px;padding:12px;min-height:48px;cursor:pointer}
 
@@ -185,7 +195,8 @@ details[open] summary{margin-bottom:12px}
       <span class="tag" id="exTag">Example figures</span>
       <div class="route" id="route">—</div>
       <div><div class="lbl" style="color:inherit;opacity:.8">Fuel needed</div><div class="big" id="total">0<small>L</small></div></div>
-      <div class="lines" id="lines"></div>
+      <div class="lines"><div id="legLines"></div><div id="lines"></div></div>
+      <div class="ratenote"><span>Tap a ratio to change it for this trip.</span><button type="button" id="resetRates" hidden>Reset ratios</button></div>
       <button class="save" id="saveBtn" type="button">Save to trip log</button>
     </section>
   </div>
@@ -216,6 +227,8 @@ const short=s=>(s||"").split(",")[0].trim();
 
 let state={mode:"local",load:"loaded",ret:"empty"};
 let isExample=false;
+let overrides={}; // per-leg ratio changes for the current trip only
+function clearOverrides(){overrides={}}
 
 function ratios(){return{loaded:num("rLoaded"),empty:num("rEmpty"),zLoaded:num("rZim"),zEmpty:num("rZimE")}}
 const ZIM_TOWNS=["zimbabwe","harare","bulawayo","beitbridge","mutare","gweru","masvingo","kwekwe","kadoma","chinhoyi","kariba","hwange","victoria falls","marondera","bindura","chegutu","norton","zvishavane","rusape"];
@@ -234,19 +247,19 @@ function legs(){
   const F=short(p.from)||"Start", T=short(p.to)||"Destination", V=short(p.via)||"Lusaka";
   if(!zimTrip()){
     const km=num("kmL");
-    L.push({name:`${F} → ${T}`,load:state.load,km,ratio:r[state.load]});
-    if(state.ret!=="none")L.push({name:`${T} → ${F}`,load:state.ret,km,ratio:r[state.ret]});
+    L.push({key:"out",name:`${F} → ${T}`,load:state.load,km,ratio:r[state.load]});
+    if(state.ret!=="none")L.push({key:"back",name:`${T} → ${F}`,load:state.ret,km,ratio:r[state.ret]});
   }else{
     // Up to Lusaka: normal rates. Lusaka ⇄ Zimbabwe: Zimbabwe rates.
     const a=num("kmA"), b=num("kmB"), z={loaded:r.zLoaded,empty:r.zEmpty};
-    L.push({name:`${F} → ${V}`,load:state.load,km:a,ratio:r[state.load]});
-    L.push({name:`${V} → ${T}`,load:"Zimbabwe "+state.load,km:b,ratio:z[state.load]});
+    L.push({key:"toVia",name:`${F} → ${V}`,load:state.load,km:a,ratio:r[state.load]});
+    L.push({key:"viaDest",name:`${V} → ${T}`,load:"Zimbabwe "+state.load,km:b,ratio:z[state.load]});
     if(state.ret!=="none"){
-      L.push({name:`${T} → ${V}`,load:"Zimbabwe "+state.ret,km:b,ratio:z[state.ret]});
-      L.push({name:`${V} → ${F}`,load:state.ret,km:a,ratio:r[state.ret]});
+      L.push({key:"destVia",name:`${T} → ${V}`,load:"Zimbabwe "+state.ret,km:b,ratio:z[state.ret]});
+      L.push({key:"viaHome",name:`${V} → ${F}`,load:state.ret,km:a,ratio:r[state.ret]});
     }
   }
-  L.forEach(l=>l.litres=l.km*l.ratio);
+  L.forEach(l=>{l.def=l.ratio;if(overrides[l.key]!=null){l.ratio=overrides[l.key];l.edited=l.ratio!==l.def}l.litres=l.km*l.ratio});
   return L;
 }
 
@@ -274,10 +287,20 @@ function render(){
   const L=legs(), total=L.reduce((s,l)=>s+l.litres,0), km=L.reduce((s,l)=>s+l.km,0), price=num("price");
   $("route").textContent=zim?`${F} → ${V} → ${T}${state.ret!=="none"?` → ${V} → ${F}`:""}`:`${F} → ${short(p.to)||"Destination"}${state.ret!=="none"?" → back":""}`;
   $("total").innerHTML=fmt(total)+"<small>L</small>";
-  let h=L.map(l=>`<div><span>${esc(l.name)} · ${fmt(l.km)} km × ${l.ratio}</span><b>${fmt(l.litres)} L</b></div>`).join("");
-  h+=`<div class="sum"><span>Total distance</span><b>${fmt(km)} km</b></div>`;
+  const box=$("legLines"), keys=L.map(l=>l.key).join(",");
+  if(box.dataset.keys!==keys){
+    box.dataset.keys=keys;
+    box.innerHTML=L.map(l=>`<div class="leg" data-k="${l.key}"><span class="ln"></span><span class="rx">×<input class="rate" type="number" inputmode="decimal" step="0.01" min="0" aria-label="Litres per km for ${esc(l.name)}" data-k="${l.key}"></span><b class="lt"></b></div>`).join("");
+  }
+  L.forEach(l=>{const row=box.querySelector(`.leg[data-k="${l.key}"]`), inp=row.querySelector(".rate");
+    row.querySelector(".ln").textContent=`${l.name} · ${fmt(l.km)} km`;
+    if(document.activeElement!==inp)inp.value=l.ratio;
+    row.classList.toggle("edited",!!l.edited);
+    row.querySelector(".lt").textContent=fmt(l.litres)+" L";});
+  let h=`<div class="sum"><span>Total distance</span><b>${fmt(km)} km</b></div>`;
   if(price)h+=`<div class="sum"><span>Fuel cost @ ${fmt(price,0)}/L</span><b>TZS ${fmt(total*price,0)}</b></div>`;
   $("lines").innerHTML=h;
+  $("resetRates").hidden=!L.some(l=>l.edited);
   $("exTag").hidden=!isExample;
   store.set("tf_prefs",{price:$("price").value,rLoaded:$("rLoaded").value,rEmpty:$("rEmpty").value,rZimE:$("rZimE").value,rZim:$("rZim").value,via:$("zVia").value,mode:state.mode});
 }
@@ -305,7 +328,7 @@ $("saveBtn").addEventListener("click",()=>{
     from:p.from,via:zimTrip()?p.via:"",to:p.to,route:$("route").textContent,
     going:state.load,ret:state.ret,
     km:L.reduce((s,l)=>s+l.km,0),litres,price,cost:litres*price,
-    legs:L.map(l=>({name:l.name,load:l.load,km:l.km,ratio:l.ratio,litres:l.litres}))});
+    legs:L.map(l=>({name:l.name,load:l.load,km:l.km,ratio:l.ratio,litres:l.litres,edited:!!l.edited}))});
   store.set("tf_log2",log.slice(0,1000));renderLog();
   const b=$("saveBtn");b.textContent="Saved";setTimeout(()=>b.textContent="Save to trip log",1500);
 });
@@ -318,11 +341,11 @@ $("xlsxBtn").addEventListener("click",()=>{
   if(!log.length){alertLog("No trips to download yet.");return}
   const trips=log.map(t=>({"Trip ID":t.id,"Date":t.date,"Type":t.type,"Truck":t.truck,"From":t.from,"Via":t.via,"To":t.to,
     "Going":t.going,"Return":t.ret,"Total km":r2(t.km),"Fuel (L)":r2(t.litres),"Price/L (TZS)":t.price||"","Cost (TZS)":t.cost?Math.round(t.cost):""}));
-  const legRows=[];log.forEach(t=>(t.legs||[]).forEach((l,i)=>legRows.push({"Trip ID":t.id,"Date":t.date,"Type":t.type,"Truck":t.truck,"Leg":i+1,"Route":l.name,"Ratio type":l.load,"km":r2(l.km),"L/km":l.ratio,"Fuel (L)":r2(l.litres)})));
+  const legRows=[];log.forEach(t=>(t.legs||[]).forEach((l,i)=>legRows.push({"Trip ID":t.id,"Date":t.date,"Type":t.type,"Truck":t.truck,"Leg":i+1,"Route":l.name,"Ratio type":l.load,"km":r2(l.km),"L/km":l.ratio,"Ratio edited":l.edited?"Yes":"","Fuel (L)":r2(l.litres)})));
   const wb=XLSX.utils.book_new();
   const ws1=XLSX.utils.json_to_sheet(trips), ws2=XLSX.utils.json_to_sheet(legRows);
   ws1["!cols"]=[8,17,10,12,22,18,22,8,8,10,10,12,14].map(w=>({wch:w}));
-  ws2["!cols"]=[8,17,10,12,5,32,11,10,6,10].map(w=>({wch:w}));
+  ws2["!cols"]=[8,17,10,12,5,32,16,10,6,12,10].map(w=>({wch:w}));
   XLSX.utils.book_append_sheet(wb,ws1,"Trips");XLSX.utils.book_append_sheet(wb,ws2,"Legs");
   const d=new Date();XLSX.writeFile(wb,`trip-fuel-log-${d.toISOString().slice(0,10)}.xlsx`);
 });
@@ -334,7 +357,7 @@ $("importFile").addEventListener("change",async e=>{
     if(!trips.length||!("Trip ID" in trips[0])){alertLog("That file isn't a trip log from this calculator.");return}
     const log=store.get("tf_log2",[]), have=new Set(log.map(t=>String(t.id)));let added=0;
     trips.forEach(t=>{const id=String(t["Trip ID"]);if(have.has(id))return;added++;
-      const L=legRows.filter(l=>String(l["Trip ID"])===id).map(l=>({name:l["Route"],load:l["Ratio type"],km:+l["km"]||0,ratio:+l["L/km"]||0,litres:+l["Fuel (L)"]||0}));
+      const L=legRows.filter(l=>String(l["Trip ID"])===id).map(l=>({name:l["Route"],load:l["Ratio type"],km:+l["km"]||0,ratio:+l["L/km"]||0,edited:l["Ratio edited"]==="Yes",litres:+l["Fuel (L)"]||0}));
       log.push({id,date:String(t["Date"]||""),type:t["Type"]||"Local",truck:t["Truck"]||"",from:t["From"]||"",via:t["Via"]||"",to:t["To"]||"",
         route:L.length?[L[0].name.split(" → ")[0],...L.map(l=>l.name.split(" → ")[1])].join(" → "):`${t["From"]} → ${t["To"]}`,
         going:t["Going"]||"",ret:t["Return"]||"none",km:+t["Total km"]||0,litres:+t["Fuel (L)"]||0,price:+t["Price/L (TZS)"]||0,cost:+t["Cost (TZS)"]||0,legs:L})});
@@ -394,12 +417,15 @@ $("getDist").addEventListener("click",getDistance);
 $("apiKey").addEventListener("change",()=>{const k=$("apiKey").value.trim();store.set("tf_key",k);setStatus(mapsPromise?"Key saved. Reload the page to use the new key.":(k?"Key saved on this device.":""))});
 
 // ---- controls ----
-$("mode").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;state.mode=b.dataset.v;setSeg("mode",state.mode);setStatus("");render()});
-$("load").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;state.load=b.dataset.v;setSeg("load",state.load);render()});
-$("ret").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;state.ret=b.dataset.v;setSeg("ret",state.ret);render()});
+$("mode").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;state.mode=b.dataset.v;clearOverrides();setSeg("mode",state.mode);setStatus("");render()});
+$("load").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;state.load=b.dataset.v;clearOverrides();setSeg("load",state.load);render()});
+$("ret").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;state.ret=b.dataset.v;clearOverrides();setSeg("ret",state.ret);render()});
 ["lFrom","lTo","zFrom","zVia","zTo","kmL","kmA","kmB"].forEach(id=>$(id).addEventListener("input",()=>{isExample=false;render()}));
 $("zTo").addEventListener("input",()=>{const z=looksZim($("zTo").value);if(z!==$("zimRoute").checked){$("zimRoute").checked=z;render()}});
-$("zimRoute").addEventListener("change",render);
+$("zimRoute").addEventListener("change",()=>{clearOverrides();render()});
+$("legLines").addEventListener("input",e=>{const i=e.target.closest(".rate");if(!i)return;const v=parseFloat(i.value);if(isNaN(v))delete overrides[i.dataset.k];else overrides[i.dataset.k]=v;render()});
+$("legLines").addEventListener("focusout",e=>{if(e.target.closest(".rate"))render()});
+$("resetRates").addEventListener("click",()=>{clearOverrides();render()});
 ["price","rLoaded","rEmpty","rZimE","rZim","truck"].forEach(id=>$(id).addEventListener("input",render));
 
 // ---- start ----
