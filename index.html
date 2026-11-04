@@ -46,7 +46,8 @@ input:focus-visible,button:focus-visible,a:focus-visible{outline:2px solid var(-
 .seg button[aria-pressed="true"]{background:var(--sign);color:var(--sign-fg)}
 .seg small{display:block;font:500 .72rem var(--mono);opacity:.8}
 .mode{max-width:420px;width:100%}
-.mode button{font:700 1.15rem var(--display);letter-spacing:.04em;text-transform:uppercase}
+.mode button{font:700 1.15rem/1.1 var(--display);letter-spacing:.04em;text-transform:uppercase}
+.mode small{font:500 .7rem var(--mono);letter-spacing:.06em;margin-top:2px}
 .btns{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .primary{font:600 1rem var(--body);background:var(--sign);color:var(--sign-fg);border:0;border-radius:8px;padding:12px;min-height:48px;cursor:pointer}
 .primary:disabled{opacity:.6;cursor:wait}
@@ -93,11 +94,11 @@ details[open] summary{margin-bottom:12px}
   <header>
     <div>
       <h1>Trip Fuel Calculator</h1>
-      <p>Driving distance from Google Maps × litres per km.</p>
+      <p>Driving distance from Google Maps × litres per km. Local: Tanzania ⇄ Kenya. South: Kenya ⇄ Malawi, Zambia, Zimbabwe, Congo.</p>
     </div>
     <div class="seg mode" role="group" aria-label="Trip type" id="mode">
-      <button type="button" data-v="local">Local</button>
-      <button type="button" data-v="zim">South</button>
+      <button type="button" data-v="local">Local<small>TZ ⇄ KE</small></button>
+      <button type="button" data-v="zim">South<small>MW · ZM · ZW · CD</small></button>
     </div>
   </header>
 
@@ -106,17 +107,18 @@ details[open] summary{margin-bottom:12px}
       <!-- LOCAL -->
       <div id="localForm" class="legs-in">
         <div class="row">
-          <div class="field"><label for="lFrom">From</label><input id="lFrom" autocomplete="off" placeholder="e.g. Arusha"></div>
-          <div class="field"><label for="lTo">To</label><input id="lTo" autocomplete="off" placeholder="e.g. Dar es Salaam"></div>
+          <div class="field"><label for="lFrom">From</label><input id="lFrom" list="localPlaces" autocomplete="off" placeholder="e.g. Dar es Salaam, Tanzania"></div>
+          <div class="field"><label for="lTo">To</label><input id="lTo" list="localPlaces" autocomplete="off" placeholder="e.g. Nairobi, Kenya"></div>
         </div>
       </div>
       <!-- ZIMBABWE -->
       <div id="zimForm" class="legs-in" hidden>
         <div class="row3">
-          <div class="field"><label for="zFrom">From</label><input id="zFrom" autocomplete="off" placeholder="e.g. Dar es Salaam"></div>
-          <div class="field"><label for="zVia">Via</label><input id="zVia" autocomplete="off"></div>
-          <div class="field"><label for="zTo">To</label><input id="zTo" autocomplete="off" placeholder="e.g. Harare, Zimbabwe"></div>
+          <div class="field"><label for="zFrom">From</label><input id="zFrom" list="southPlaces" autocomplete="off" placeholder="e.g. Nairobi, Kenya"></div>
+          <div class="field"><label for="zVia">Via (0.7 starts here)</label><input id="zVia" list="southPlaces" autocomplete="off"></div>
+          <div class="field"><label for="zTo">To</label><input id="zTo" list="southPlaces" autocomplete="off" placeholder="e.g. Lubumbashi, DR Congo"></div>
         </div>
+        <p class="hint">Via is where the 0.7 rate starts. Lusaka suits Zambia, Zimbabwe and Congo trips. If a route doesn't pass Lusaka, e.g. to Malawi, change Via to the right town.</p>
       </div>
 
       <div class="field"><label for="truck">Truck reg / note (optional)</label><input id="truck" autocomplete="off" placeholder="e.g. T 123 ABC"></div>
@@ -153,7 +155,7 @@ details[open] summary{margin-bottom:12px}
           <button type="button" data-v="empty">Empty<small class="re">0.3 L/km</small></button>
           <button type="button" data-v="loaded">Loaded<small class="rl">0.5 L/km</small></button>
         </div>
-        <p class="hint" id="retHint" hidden>The Lusaka → start leg. Lusaka → destination and back to Lusaka is always included at the South ratio.</p>
+        <p class="hint" id="retHint" hidden>The via → start leg. Via → destination and back to via is always included at the South ratio.</p>
       </div>
 
       <div class="field">
@@ -166,8 +168,8 @@ details[open] summary{margin-bottom:12px}
         <div class="setgrid">
           <div class="field"><label for="rLoaded">Loaded L/km</label><input id="rLoaded" type="number" inputmode="decimal" step="0.01" min="0"></div>
           <div class="field"><label for="rEmpty">Empty L/km</label><input id="rEmpty" type="number" inputmode="decimal" step="0.01" min="0"></div>
-          <div class="field"><label for="rLusaka">To Lusaka L/km</label><input id="rLusaka" type="number" inputmode="decimal" step="0.01" min="0"></div>
-          <div class="field"><label for="rZim">South: Lusaka ⇄ destination L/km</label><input id="rZim" type="number" inputmode="decimal" step="0.01" min="0"></div>
+          <div class="field"><label for="rLusaka">South: start → via L/km</label><input id="rLusaka" type="number" inputmode="decimal" step="0.01" min="0"></div>
+          <div class="field"><label for="rZim">South: via ⇄ destination L/km</label><input id="rZim" type="number" inputmode="decimal" step="0.01" min="0"></div>
         </div>
         <div class="field" style="margin-top:12px">
           <label for="apiKey">Google Maps API key</label>
@@ -200,6 +202,8 @@ details[open] summary{margin-bottom:12px}
   </section>
 </div>
 
+<datalist id="localPlaces"><option value="Dar es Salaam, Tanzania"><option value="Arusha, Tanzania"><option value="Moshi, Tanzania"><option value="Tanga, Tanzania"><option value="Dodoma, Tanzania"><option value="Morogoro, Tanzania"><option value="Mwanza, Tanzania"><option value="Mbeya, Tanzania"><option value="Namanga, Tanzania"><option value="Holili, Tanzania"><option value="Horohoro, Tanzania"><option value="Nairobi, Kenya"><option value="Mombasa, Kenya"><option value="Nakuru, Kenya"><option value="Kisumu, Kenya"><option value="Eldoret, Kenya"><option value="Namanga, Kenya"><option value="Taveta, Kenya"><option value="Lunga Lunga, Kenya"></datalist>
+<datalist id="southPlaces"><option value="Nairobi, Kenya"><option value="Mombasa, Kenya"><option value="Dar es Salaam, Tanzania"><option value="Tunduma, Tanzania"><option value="Nakonde, Zambia"><option value="Lusaka, Zambia"><option value="Kapiri Mposhi, Zambia"><option value="Ndola, Zambia"><option value="Kitwe, Zambia"><option value="Solwezi, Zambia"><option value="Chililabombwe, Zambia"><option value="Chirundu, Zambia"><option value="Kasumbalesa, DR Congo"><option value="Lubumbashi, DR Congo"><option value="Likasi, DR Congo"><option value="Kolwezi, DR Congo"><option value="Harare, Zimbabwe"><option value="Bulawayo, Zimbabwe"><option value="Beitbridge, Zimbabwe"><option value="Lilongwe, Malawi"><option value="Blantyre, Malawi"><option value="Mzuzu, Malawi"><option value="Karonga, Malawi"><option value="Songwe, Tanzania"><option value="Mchinji, Malawi"><option value="Chipata, Zambia"></datalist>
 <script>
 const $=id=>document.getElementById(id);
 const store={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},
@@ -229,7 +233,7 @@ function legs(){
     if(state.ret!=="none")L.push({name:`${T} → ${F}`,load:state.ret,km,ratio:r[state.ret]});
   }else{
     const a=num("kmA"), b=num("kmB");
-    L.push({name:`${F} → ${V}`,load:"to Lusaka",km:a,ratio:r.lusaka});
+    L.push({name:`${F} → ${V}`,load:"to "+V,km:a,ratio:r.lusaka});
     L.push({name:`${V} → ${T}`,load:"South",km:b,ratio:r.zim});
     L.push({name:`${T} → ${V}`,load:"South",km:b,ratio:r.zim});
     if(state.ret!=="none")L.push({name:`${V} → ${F}`,load:state.ret,km:a,ratio:r[state.ret]});
@@ -242,7 +246,7 @@ function render(){
   const p=places(), r=ratios(), zim=state.mode==="zim";
   $("localForm").hidden=zim; $("localKm").hidden=zim; $("loadField").hidden=zim;
   $("zimForm").hidden=!zim; $("zimKm").hidden=!zim; $("retHint").hidden=!zim;
-  $("retLbl").textContent=zim?"Lusaka → start":"Return to start";
+  $("retLbl").textContent=zim?`${short($("zVia").value)||"Via"} → start`:"Return to start";
   const F=short(p.from)||"Start", T=short(p.to)||"Destination", V=short(p.via)||"Lusaka";
   $("kmALbl").textContent=`${F} → ${V}`; $("kmBLbl").textContent=`${V} → ${T}`;
   document.querySelectorAll(".rl").forEach(e=>e.textContent=r.loaded+" L/km");
@@ -392,8 +396,8 @@ $("apiKey").value=store.get("tf_key","");
 if(!$("apiKey").value)setStatus("Add your Google Maps API key in Settings to get distances automatically.");
 if(!store.get("tf_log2",[]).length){
   isExample=true;
-  $("lFrom").value="Arusha";$("lTo").value="Dar es Salaam";$("kmL").value="640";
-  $("zFrom").value="Dar es Salaam";$("zTo").value="Harare, Zimbabwe";$("kmA").value="1950";$("kmB").value="490";
+  $("lFrom").value="Dar es Salaam, Tanzania";$("lTo").value="Nairobi, Kenya";$("kmL").value="880";
+  $("zFrom").value="Nairobi, Kenya";$("zTo").value="Lubumbashi, DR Congo";$("kmA").value="2400";$("kmB").value="600";
 }
 setSeg("mode",state.mode);setSeg("load",state.load);setSeg("ret",state.ret);render();renderLog();
 </script>
