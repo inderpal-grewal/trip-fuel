@@ -332,7 +332,7 @@ function render(){
     row.classList.toggle("edited",!!l.edited);
     row.querySelector(".lt b").textContent=fmt(l.litres)+" L";
     row.querySelector(".lt small").textContent=price?"TZS "+fmt(l.litres*price,0):"";});
-  $("lines").innerHTML=`<div class="sum"><span>Total distance</span><b>${fmt(km)} km</b></div>`+
+  $("lines").innerHTML=`<div class="sum"><span>Total distance</span><b>${fmt(km)} km</b></div><div class="sum"><span>Total fuel</span><b>${fmt(total)} L</b></div>`+
     (price?`<div class="sum"><span>Fuel cost @ ${fmt(price,0)}/L</span><b>TZS ${fmt(total*price,0)}</b></div>`:"");
   $("resetRates").hidden=!L.some(l=>l.edited);
   $("exTag").hidden=!isExample;
