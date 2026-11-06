@@ -163,8 +163,9 @@ details[open] summary{margin-bottom:12px}
         </div>
         <div class="field" style="margin-top:12px">
           <label for="apiKey">Google Maps API key</label>
-          <input id="apiKey" type="password" autocomplete="off" spellcheck="false" placeholder="Paste key (starts with AIza)">
-          <p class="hint">Stored on this device only. Enter it once on each device.</p>
+          <div class="inrow"><input id="apiKey" type="password" autocomplete="off" spellcheck="false" placeholder="Paste key (starts with AIza)">
+            <button type="button" class="primary" id="saveKey" style="flex:none;padding:12px 16px">Save key</button></div>
+          <p class="hint" id="keyNote">Stored on this device only. Enter it once on each device.</p>
         </div>
       </details>
     </section>
@@ -436,7 +437,7 @@ const hm=m=>m>=60?Math.floor(m/60)+" h "+(m%60)+" min":m+" min";
 async function getDistances(){
   const t=T(), key=$("apiKey").value.trim();
   if(!t.start.trim()||t.stops.some(s=>!s.place.trim())){setStatus("Fill in the start and every destination first.",true);return}
-  if(!key){$("settings").open=true;$("apiKey").focus();setStatus("Add your Google Maps API key in Settings first.",true);return}
+  if(!key){$("settings").open=true;$("apiKey").focus();$("settings").scrollIntoView({behavior:"smooth",block:"center"});setStatus("No Google Maps key on this device yet. Paste it in the box under Settings (now open) and tap Save key.",true);return}
   const added=ensureLusaka(); if(added)renderStops();
   const btn=$("getDist");btn.disabled=true;btn.textContent="Getting…";setStatus("Asking Google Maps for the driving routes…");
   try{
@@ -455,7 +456,16 @@ async function getDistances(){
   }finally{btn.disabled=false;btn.textContent="Get distances"}
 }
 $("getDist").addEventListener("click",getDistances);
-$("apiKey").addEventListener("change",()=>{const k=$("apiKey").value.trim();store.set("tf_key",k);setStatus(mapsPromise?"Key saved. Reload the page to use the new key.":(k?"Key saved on this device.":""))});
+function saveKey(show){
+  const k=$("apiKey").value.trim(); store.set("tf_key",k);
+  const ok=/^AIza[\w-]{30,}$/.test(k);
+  $("keyNote").textContent=!k?"No key saved on this device yet.":ok?"✓ Key saved on this device.":"Saved, but this doesn't look like a Google Maps key. It should start with AIza and be about 39 characters long.";
+  $("keyNote").style.color=k&&!ok?"var(--err)":"";
+  if(show)setStatus(!k?"":mapsPromise?"Key saved. Reload the page to use the new key.":"Key saved. Tap Get distances.");
+}
+$("apiKey").addEventListener("input",()=>saveKey(false));
+$("apiKey").addEventListener("change",()=>saveKey(true));
+$("saveKey").addEventListener("click",()=>saveKey(true));
 
 // ---- controls ----
 $("mode").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;state.mode=b.dataset.v;overrides={};setSeg($("mode"),state.mode);setStatus("");renderStops();render()});
@@ -466,7 +476,7 @@ const pr=store.get("tf_prefs",{});
 $("rLoaded").value=pr.rLoaded||"0.5";$("rEmpty").value=pr.rEmpty||"0.3";$("rZimE").value=pr.rZimE||"0.5";$("rZim").value=pr.rZim||"0.7";
 $("price").value=pr.price||"";state.mode=pr.mode||"local";
 $("apiKey").value=store.get("tf_key","");
-if(!$("apiKey").value)setStatus("Add your Google Maps API key in Settings to get distances automatically.");
+if(!$("apiKey").value)setStatus("Add your Google Maps API key in Settings to get distances automatically.");else saveKey(false);
 if(!store.get("tf_log2",[]).length){
   isExample=true;
   state.trips.local={start:"Dar es Salaam, Tanzania",stops:[newStop("Nairobi, Kenya","loaded","880")],ret:{on:true,id:nid(),load:"empty",km:"880"}};
