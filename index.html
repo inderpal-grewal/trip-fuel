@@ -8,7 +8,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
-/* Layout: dispatch slip — trip inputs left, fuel ticket right; stacks on phones */
+/* Layout: dispatch slip — route timeline left, fuel ticket right; stacks on phones */
 :root{
   --bg:#eef1ee; --panel:#ffffff; --fg:#1d2723; --muted:#5d6a64; --line:#cfd8d3;
   --sign:#1c6845; --sign-fg:#ffffff; --amber:#b7791f; --field:#f7f9f8; --err:#b3261e;
@@ -36,44 +36,67 @@ label,.lbl{font-size:.75rem;font-weight:600;letter-spacing:.08em;text-transform:
 .field{display:flex;flex-direction:column;gap:6px;min-width:0}
 input{font:inherit;font-size:1rem;color:var(--fg);background:var(--field);border:1px solid var(--line);border-radius:8px;padding:12px;width:100%;min-height:48px}
 input:focus-visible,button:focus-visible,a:focus-visible{outline:2px solid var(--sign);outline-offset:2px}
-.row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.row3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
-@media (max-width:520px){.row3{grid-template-columns:1fr}}
 .seg{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--line);border-radius:8px;overflow:hidden}
-.seg.three{grid-template-columns:repeat(3,1fr)}
-.seg button{font:600 .95rem var(--body);background:var(--field);color:var(--fg);border:0;padding:10px 6px;min-height:48px;cursor:pointer}
+.seg button{font:600 .95rem var(--body);background:var(--field);color:var(--fg);border:0;padding:8px 6px;min-height:44px;cursor:pointer}
 .seg button+button{border-left:1px solid var(--line)}
 .seg button[aria-pressed="true"]{background:var(--sign);color:var(--sign-fg)}
-.seg small{display:block;font:500 .72rem var(--mono);opacity:.8}
+.seg small{display:block;font:500 .7rem var(--mono);opacity:.8}
 .mode{max-width:420px;width:100%}
-.mode button{font:700 1.15rem/1.1 var(--display);letter-spacing:.04em;text-transform:uppercase}
-.mode small{font:500 .7rem var(--mono);letter-spacing:.06em;margin-top:2px}
+.mode button{font:700 1.15rem/1.1 var(--display);letter-spacing:.04em;text-transform:uppercase;min-height:52px}
 .btns{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .primary{font:600 1rem var(--body);background:var(--sign);color:var(--sign-fg);border:0;border-radius:8px;padding:12px;min-height:48px;cursor:pointer}
 .primary:disabled{opacity:.6;cursor:wait}
-.ghost{display:flex;align-items:center;justify-content:center;text-decoration:none;font:600 1rem var(--body);color:var(--sign);background:none;border:1.5px solid var(--sign);border-radius:8px;padding:12px;min-height:48px;cursor:pointer;text-align:center}
+.ghost{display:flex;align-items:center;justify-content:center;gap:6px;text-decoration:none;font:600 1rem var(--body);color:var(--sign);background:none;border:1.5px solid var(--sign);border-radius:8px;padding:12px;min-height:48px;cursor:pointer;text-align:center}
 .ghost[aria-disabled="true"]{opacity:.45;pointer-events:none}
 .status{margin:-6px 0 0;font-size:.88rem;color:var(--muted);min-height:1.3em}
 .status.err{color:var(--err)}
 .hint{font-size:.85rem;color:var(--muted);margin:0}
-.km{position:relative}.km input{font:500 1.3rem var(--mono);padding-right:52px}
-.km span{position:absolute;right:14px;top:50%;transform:translateY(-50%);color:var(--muted);font-family:var(--mono)}
-.legs-in{display:flex;flex-direction:column;gap:12px}
+.km{position:relative}.km input{font:500 1.05rem var(--mono);padding-right:46px;min-height:44px}
+.km span{position:absolute;right:12px;top:50%;transform:translateY(-50%);color:var(--muted);font-family:var(--mono);font-size:.9rem}
+.km input::-webkit-inner-spin-button,.km input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+.km input{-moz-appearance:textfield;appearance:textfield}
 
+/* route timeline */
+.route-tl{display:flex;flex-direction:column}
+.pt{display:grid;grid-template-columns:32px minmax(0,1fr);column-gap:12px;align-items:center}
+.pin{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;font:700 .95rem var(--display);background:var(--panel);border:2px solid var(--sign);color:var(--sign);z-index:1}
+.pin.start,.pin.home{background:var(--sign);color:var(--sign-fg)}
+.pin.auto{border-style:dashed}
+.pt-body{display:flex;flex-direction:column;gap:4px;min-width:0}
+.inrow{display:flex;gap:8px;min-width:0}
+.inrow input{flex:1;min-width:0}
+.rm{flex:none;width:44px;min-height:48px;border:1px solid var(--line);background:var(--field);color:var(--muted);border-radius:8px;font-size:1.2rem;cursor:pointer}
+.home-name{font-weight:600;padding:10px 0;overflow-wrap:anywhere}
+.legrow{display:grid;grid-template-columns:32px minmax(0,1fr);column-gap:12px}
+.rail{justify-self:center;width:3px;background:repeating-linear-gradient(var(--sign) 0 8px,transparent 8px 14px);opacity:.6}
+.leg-body{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:8px;padding:10px 0;align-items:center}
+.leg-tag{grid-column:1/-1;font-size:.78rem;color:var(--muted)}
+.leg-tag b{color:var(--amber);font-weight:600}
+@media (max-width:420px){.leg-body{grid-template-columns:1fr}}
+.addrow{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px}
+.addrow .ghost{min-height:44px;padding:8px 10px;font-size:.92rem}
+
+/* ticket */
 .ticket{background:var(--sign);color:var(--sign-fg);border-radius:10px;padding:20px;display:flex;flex-direction:column;gap:14px;min-width:0}
-.ticket .route{font:700 1.3rem/1.15 var(--display);letter-spacing:.02em;text-transform:uppercase;overflow-wrap:anywhere}
-.big{font:700 3.6rem/1 var(--display);font-variant-numeric:tabular-nums}
-.big small{font-size:1.3rem;margin-left:4px}
+.ticket .route{font:700 1.2rem/1.2 var(--display);letter-spacing:.02em;text-transform:uppercase;overflow-wrap:anywhere}
+.totals{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.big{font:700 3rem/1 var(--display);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.big small{font-size:1.1rem;margin-left:4px}
+.big.cost{font-size:2.2rem}
+.ticket .lbl{color:inherit;opacity:.8}
+.costnote{font-size:.85rem;opacity:.85}
 .lines{display:flex;flex-direction:column;border-top:1px solid color-mix(in srgb,var(--sign-fg) 30%,transparent)}
 .lines>div>div{display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px dashed color-mix(in srgb,var(--sign-fg) 30%,transparent);font-variant-numeric:tabular-nums}
 .lines b{font-family:var(--mono);font-weight:500;text-align:right;white-space:nowrap}
 .lines .sum{font-weight:600}
-.leg{display:grid!important;grid-template-columns:minmax(0,1fr) auto minmax(5.5em,auto);column-gap:10px;align-items:center}
-.rate::-webkit-inner-spin-button,.rate::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
-.rate{-moz-appearance:textfield;appearance:textfield}
+.leg{display:grid!important;grid-template-columns:minmax(0,1fr) auto minmax(5.2em,auto);column-gap:10px;align-items:center}
 .leg .ln{min-width:0;overflow-wrap:anywhere}
+.leg .ln small{display:block;opacity:.8;font-family:var(--mono);font-size:.75rem}
+.leg .lt{display:flex;flex-direction:column;align-items:flex-end}
+.leg .lt small{opacity:.8;font-size:.75rem}
 .rx{display:flex;align-items:center;gap:4px;font-family:var(--mono)}
-.rate{width:66px;min-height:34px;padding:4px 6px;font:500 .9rem var(--mono);text-align:right;color:var(--sign-fg);background:color-mix(in srgb,var(--sign-fg) 12%,transparent);border:1px solid color-mix(in srgb,var(--sign-fg) 35%,transparent);border-radius:6px}
+.rate{width:62px;min-height:34px;padding:4px 6px;font:500 .9rem var(--mono);text-align:right;color:var(--sign-fg);background:color-mix(in srgb,var(--sign-fg) 12%,transparent);border:1px solid color-mix(in srgb,var(--sign-fg) 35%,transparent);border-radius:6px;-moz-appearance:textfield;appearance:textfield}
+.rate::-webkit-inner-spin-button,.rate::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
 .rate:focus-visible{outline:2px solid var(--sign-fg);outline-offset:1px}
 .leg.edited .rate{background:var(--amber);color:#1a1205;border-color:var(--amber)}
 .ratenote{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:.82rem;opacity:.85;flex-wrap:wrap}
@@ -96,8 +119,6 @@ td.num,th.num{text-align:right;font-family:var(--mono)}
 .del{background:none;border:0;color:var(--muted);cursor:pointer;font-size:1.1rem;padding:4px 8px}
 details summary{cursor:pointer;color:var(--muted);font-size:.9rem}
 details[open] summary{margin-bottom:12px}
-.check{display:flex;align-items:center;gap:10px;font-size:.95rem;font-weight:600;letter-spacing:0;text-transform:none;color:var(--fg);cursor:pointer;min-height:40px}
-.check input{width:22px;height:22px;min-height:0;accent-color:var(--sign);margin:0}
 .setgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
 </style>
 </head>
@@ -116,62 +137,19 @@ details[open] summary{margin-bottom:12px}
 
   <div class="grid">
     <section class="panel" aria-label="Trip details">
-      <!-- LOCAL -->
-      <div id="localForm" class="legs-in">
-        <div class="row">
-          <div class="field"><label for="lFrom">From</label><input id="lFrom" list="localPlaces" autocomplete="off" placeholder="e.g. Dar es Salaam, Tanzania"></div>
-          <div class="field"><label for="lTo">To</label><input id="lTo" list="localPlaces" autocomplete="off" placeholder="e.g. Nairobi, Kenya"></div>
-        </div>
-      </div>
-      <!-- SOUTH -->
-      <div id="zimForm" class="legs-in" hidden>
-        <div class="row">
-          <div class="field"><label for="zFrom">From</label><input id="zFrom" list="southPlaces" autocomplete="off" placeholder="e.g. Nairobi, Kenya"></div>
-          <div class="field"><label for="zTo">To</label><input id="zTo" list="southPlaces" autocomplete="off" placeholder="e.g. Harare, Zimbabwe"></div>
-        </div>
-        <label class="check" for="zimRoute"><input id="zimRoute" type="checkbox"> Zimbabwe trip via Lusaka</label>
-        <div class="field" id="viaField"><label for="zVia">Via</label><input id="zVia" list="southPlaces" autocomplete="off"></div>
-        <p class="hint" id="southHint"></p>
-      </div>
+      <div class="route-tl" id="routeTl"></div>
+      <p class="hint" id="routeHint">Add a destination for each drop-off or pickup. If the truck comes home a different way, add the towns it passes through before the return to start.</p>
 
       <div class="field"><label for="truck">Truck reg / note (optional)</label><input id="truck" autocomplete="off" placeholder="e.g. T 123 ABC"></div>
 
       <div class="btns">
-        <button id="getDist" class="primary" type="button">Get distance</button>
+        <button id="getDist" class="primary" type="button">Get distances</button>
         <a id="maps" class="ghost" href="#" target="_blank" rel="noopener">View in Google Maps ↗</a>
       </div>
       <p class="status" id="status" role="status"></p>
 
-      <div id="localKm" class="field">
-        <label for="kmL">Distance one way</label>
-        <div class="km"><input id="kmL" type="number" inputmode="decimal" min="0" step="0.1" placeholder="0"><span>km</span></div>
-      </div>
-      <div id="zimKm" class="row" hidden>
-        <div class="field"><label for="kmA" id="kmALbl">Start → Lusaka</label>
-          <div class="km"><input id="kmA" type="number" inputmode="decimal" min="0" step="0.1" placeholder="0"><span>km</span></div></div>
-        <div class="field"><label for="kmB" id="kmBLbl">Lusaka → Destination</label>
-          <div class="km"><input id="kmB" type="number" inputmode="decimal" min="0" step="0.1" placeholder="0"><span>km</span></div></div>
-      </div>
-
-      <div class="field" id="loadField">
-        <span class="lbl" id="loadLbl">Going</span>
-        <div class="seg" role="group" aria-labelledby="loadLbl" id="load">
-          <button type="button" data-v="loaded">Loaded<small class="rl">0.5 L/km</small></button>
-          <button type="button" data-v="empty">Empty<small class="re">0.3 L/km</small></button>
-        </div>
-      </div>
-
       <div class="field">
-        <span class="lbl" id="retLbl">Return to start</span>
-        <div class="seg three" role="group" aria-labelledby="retLbl" id="ret">
-          <button type="button" data-v="none">None</button>
-          <button type="button" data-v="empty">Empty<small class="re2">0.3 L/km</small></button>
-          <button type="button" data-v="loaded">Loaded<small class="rl2">0.5 L/km</small></button>
-        </div>
-      </div>
-
-      <div class="field">
-        <label for="price">Fuel price per litre (TZS, optional)</label>
+        <label for="price">Fuel price per litre (TZS)</label>
         <input id="price" type="number" inputmode="decimal" min="0" placeholder="e.g. 3200">
       </div>
 
@@ -194,7 +172,10 @@ details[open] summary{margin-bottom:12px}
     <section class="ticket" aria-live="polite">
       <span class="tag" id="exTag">Example figures</span>
       <div class="route" id="route">—</div>
-      <div><div class="lbl" style="color:inherit;opacity:.8">Fuel needed</div><div class="big" id="total">0<small>L</small></div></div>
+      <div class="totals">
+        <div><div class="lbl">Fuel, full trip</div><div class="big" id="total">0<small>L</small></div></div>
+        <div><div class="lbl">Fuel cost, full trip</div><div class="big cost" id="costTotal">—</div></div>
+      </div>
       <div class="lines"><div id="legLines"></div><div id="lines"></div></div>
       <div class="ratenote"><span>Tap a ratio to change it for this trip.</span><button type="button" id="resetRates" hidden>Reset ratios</button></div>
       <button class="save" id="saveBtn" type="button">Save to trip log</button>
@@ -224,111 +205,173 @@ const store={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.
 const fmt=(n,d=1)=>Number(n||0).toLocaleString("en-US",{minimumFractionDigits:d,maximumFractionDigits:d});
 const num=id=>parseFloat($(id).value)||0;
 const short=s=>(s||"").split(",")[0].trim();
+function esc(s){const d=document.createElement("div");d.textContent=s==null?"":String(s);return d.innerHTML}
 
-let state={mode:"local",load:"loaded",ret:"empty"};
+const ZIM_TOWNS=["zimbabwe","harare","bulawayo","beitbridge","mutare","gweru","masvingo","kwekwe","kadoma","chinhoyi","kariba","hwange","victoria falls","marondera","bindura","chegutu","norton","zvishavane","rusape"];
+const looksZim=t=>{t=(t||"").toLowerCase();return !!t&&ZIM_TOWNS.some(z=>t.includes(z))};
+const isLusaka=t=>/lusaka/i.test(t||"");
+const LUSAKA="Lusaka, Zambia";
+
+// ---- trip model: a start, a list of stops, and an optional return to start ----
+let uid=0; const nid=()=>"s"+(++uid);
+const newStop=(place="",load="loaded",km="",auto=false)=>({id:nid(),place,load,km,auto});
+const blankTrip=()=>({start:"",stops:[newStop()],ret:{on:true,id:nid(),load:"empty",km:""}});
+let state={mode:"local",trips:{local:blankTrip(),zim:blankTrip()}};
+const T=()=>state.trips[state.mode];
 let isExample=false;
 let overrides={}; // per-leg ratio changes for the current trip only
-function clearOverrides(){overrides={}}
 
 function ratios(){return{loaded:num("rLoaded"),empty:num("rEmpty"),zLoaded:num("rZim"),zEmpty:num("rZimE")}}
-const ZIM_TOWNS=["zimbabwe","harare","bulawayo","beitbridge","mutare","gweru","masvingo","kwekwe","kadoma","chinhoyi","kariba","hwange","victoria falls","marondera","bindura","chegutu","norton","zvishavane","rusape"];
-const looksZim=t=>{t=(t||"").toLowerCase();return ZIM_TOWNS.some(z=>t.includes(z))};
-const zimTrip=()=>state.mode==="zim"&&$("zimRoute").checked;
-function setSeg(id,val){$(id).querySelectorAll("button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.v===val))}
+function setSeg(el,val){el.querySelectorAll("button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.v===val))}
 
-function places(){
-  if(state.mode==="local")return{from:$("lFrom").value.trim(),to:$("lTo").value.trim(),via:""};
-  return{from:$("zFrom").value.trim(),via:$("zVia").value.trim(),to:$("zTo").value.trim()};
-}
-
-// Every trip becomes a list of legs: {name, km, ratio, litres}
+// Every trip becomes a list of legs. Legs touching Zimbabwe use the Zimbabwe rates.
 function legs(){
-  const r=ratios(), p=places(), L=[];
-  const F=short(p.from)||"Start", T=short(p.to)||"Destination", V=short(p.via)||"Lusaka";
-  if(!zimTrip()){
-    const km=num("kmL");
-    L.push({key:"out",name:`${F} → ${T}`,load:state.load,km,ratio:r[state.load]});
-    if(state.ret!=="none")L.push({key:"back",name:`${T} → ${F}`,load:state.ret,km,ratio:r[state.ret]});
-  }else{
-    // Up to Lusaka: normal rates. Lusaka ⇄ Zimbabwe: Zimbabwe rates.
-    const a=num("kmA"), b=num("kmB"), z={loaded:r.zLoaded,empty:r.zEmpty};
-    L.push({key:"toVia",name:`${F} → ${V}`,load:state.load,km:a,ratio:r[state.load]});
-    L.push({key:"viaDest",name:`${V} → ${T}`,load:"Zimbabwe "+state.load,km:b,ratio:z[state.load]});
-    if(state.ret!=="none"){
-      L.push({key:"destVia",name:`${T} → ${V}`,load:"Zimbabwe "+state.ret,km:b,ratio:z[state.ret]});
-      L.push({key:"viaHome",name:`${V} → ${F}`,load:state.ret,km:a,ratio:r[state.ret]});
-    }
-  }
-  L.forEach(l=>{l.def=l.ratio;if(overrides[l.key]!=null){l.ratio=overrides[l.key];l.edited=l.ratio!==l.def}l.litres=l.km*l.ratio});
+  const t=T(), r=ratios(), pts=[t.start,...t.stops.map(s=>s.place)], L=[];
+  const mk=(s,from,to,home)=>{
+    const zone=looksZim(from)||looksZim(to);
+    const def=zone?(s.load==="loaded"?r.zLoaded:r.zEmpty):r[s.load];
+    const has=overrides[s.id]!=null, ratio=has?overrides[s.id]:def, km=parseFloat(s.km)||0;
+    return{id:s.id,from,to,home,name:`${short(from)||"Start"} → ${short(to)||"?"}`,load:s.load,zone,km,def,ratio,edited:has&&ratio!==def,litres:km*ratio};
+  };
+  t.stops.forEach((s,i)=>L.push(mk(s,pts[i],s.place,false)));
+  if(t.ret.on)L.push(mk(t.ret,pts[pts.length-1],t.start,true));
   return L;
 }
 
+// Zimbabwe trucks pass Lusaka: add it as a stop where a leg crosses into or out of Zimbabwe.
+function ensureLusaka(){
+  const t=T(); let added=0;
+  for(let i=0;i<=t.stops.length;i++){
+    const home=i===t.stops.length; if(home&&!t.ret.on)break;
+    const a=i===0?t.start:t.stops[i-1].place, b=home?t.start:t.stops[i].place;
+    if(!a.trim()||!b.trim())continue;
+    const crossing=(looksZim(b)&&!looksZim(a)&&!isLusaka(a))||(looksZim(a)&&!looksZim(b)&&!isLusaka(b));
+    if(crossing){
+      const leg=home?t.ret:t.stops[i];
+      t.stops.splice(i,0,newStop(LUSAKA,leg.load,"",true));
+      leg.km=""; added++; i++;
+    }
+  }
+  return added;
+}
+
+// ---- route timeline UI ----
+function renderStops(){
+  const t=T(), list=state.mode==="zim"?"southPlaces":"localPlaces";
+  let h=`<div class="pt"><span class="pin start">S</span><div class="pt-body"><label for="startIn">Start</label>
+    <input id="startIn" class="place" data-id="start" list="${list}" autocomplete="off" placeholder="${state.mode==="zim"?"e.g. Nairobi, Kenya":"e.g. Dar es Salaam, Tanzania"}" value="${esc(t.start)}"></div></div>`;
+  t.stops.forEach((s,i)=>{
+    h+=legRow(s);
+    h+=`<div class="pt"><span class="pin${s.auto?" auto":""}">${i+1}</span><div class="pt-body"><label for="in_${s.id}">${s.auto?"Via (added: Zimbabwe trucks pass Lusaka)":"Destination "+(i+1)}</label>
+      <div class="inrow"><input id="in_${s.id}" class="place" data-id="${s.id}" list="${list}" autocomplete="off" placeholder="Town, country" value="${esc(s.place)}">
+      <button type="button" class="rm" data-rm="${s.id}" aria-label="Remove destination ${i+1}">×</button></div></div></div>`;
+  });
+  h+=`<div class="addrow"><button type="button" class="ghost" id="addStop">+ Add destination</button>
+      <button type="button" class="ghost" id="retToggle" ${t.ret.on?"hidden":""}>↩ Return to start</button></div>`;
+  if(t.ret.on){
+    h+=legRow(t.ret);
+    h+=`<div class="pt"><span class="pin home">⌂</span><div class="pt-body"><span class="lbl">Back to start</span>
+      <div class="inrow"><span class="home-name" id="homeName">${esc(t.start)||"Start"}</span><span style="flex:1"></span>
+      <button type="button" class="rm" data-rm="ret" aria-label="Remove the return to start">×</button></div></div></div>`;
+  }
+  $("routeTl").innerHTML=h;
+  updateLegTags();
+}
+function legRow(s){
+  return `<div class="legrow" data-leg="${s.id}"><span class="rail"></span><div class="leg-body">
+    <div class="seg" role="group" aria-label="Load on this leg" data-load="${s.id}">
+      <button type="button" data-v="loaded" aria-pressed="${s.load==="loaded"}">Loaded</button>
+      <button type="button" data-v="empty" aria-pressed="${s.load==="empty"}">Empty</button></div>
+    <div class="km"><input class="kmIn" data-id="${s.id}" type="number" inputmode="decimal" min="0" step="0.1" placeholder="0" value="${esc(s.km)}" aria-label="Distance for this leg"><span>km</span></div>
+    <div class="leg-tag" data-tag="${s.id}"></div></div></div>`;
+}
+function updateLegTags(){
+  legs().forEach(l=>{const el=document.querySelector(`[data-tag="${l.id}"]`);if(!el)return;
+    el.innerHTML=`${esc(l.name)} · ${l.zone?"<b>Zimbabwe rate</b> ":""}${l.def} L/km`});
+  const h=$("homeName");if(h)h.textContent=T().start||"Start";
+}
+function findStop(id){const t=T();return id==="ret"||t.ret.id===id?t.ret:t.stops.find(s=>s.id===id)}
+
+$("routeTl").addEventListener("input",e=>{
+  const t=T(), el=e.target;
+  if(el.classList.contains("place")){if(el.dataset.id==="start")t.start=el.value;else findStop(el.dataset.id).place=el.value;
+    const s=findStop(el.dataset.id);if(s)s.auto=false;isExample=false;render()}
+  else if(el.classList.contains("kmIn")){findStop(el.dataset.id).km=el.value;isExample=false;render()}
+});
+$("routeTl").addEventListener("change",e=>{
+  if(e.target.classList.contains("place")&&ensureLusaka()){renderStops();render();setStatus("Lusaka added as a stop. Zimbabwe trucks go via Lusaka.")}
+});
+$("routeTl").addEventListener("click",e=>{
+  const t=T(), seg=e.target.closest("[data-load] button"), rm=e.target.closest("[data-rm]");
+  if(seg){const s=findStop(seg.parentElement.dataset.load);s.load=seg.dataset.v;delete overrides[s.id];setSeg(seg.parentElement,s.load);render();return}
+  if(rm){const id=rm.dataset.rm;
+    if(id==="ret")t.ret.on=false;
+    else{t.stops=t.stops.filter(s=>s.id!==id);if(!t.stops.length)t.stops.push(newStop())}
+    delete overrides[id];isExample=false;renderStops();render();return}
+  if(e.target.id==="addStop"){while(t.stops.length&&t.stops[t.stops.length-1].auto)t.stops.pop();t.ret.km="";t.stops.push(newStop("",t.stops.length?t.stops[t.stops.length-1].load:"loaded"));renderStops();render();
+    const ins=document.querySelectorAll("#routeTl .place");ins[ins.length-1].focus();return}
+  if(e.target.id==="retToggle"){t.ret.on=true;t.ret.km="";renderStops();render();return}
+});
+
+// ---- ticket ----
 function render(){
-  const p=places(), r=ratios(), south=state.mode==="zim", zim=zimTrip();
-  $("localForm").hidden=south; $("zimForm").hidden=!south;
-  $("localKm").hidden=zim; $("zimKm").hidden=!zim; $("viaField").hidden=!zim;
-  const F=short(p.from)||"Start", T=short(p.to)||"Destination", V=short(p.via)||"Lusaka";
-  $("southHint").textContent=zim
-    ?`Up to ${V}: ${r.loaded} loaded, ${r.empty} empty. ${V} ⇄ Zimbabwe: ${r.zLoaded} loaded, ${r.zEmpty} empty.`
-    :`Malawi, Zambia and Congo trips use the normal rates: ${r.loaded} loaded, ${r.empty} empty.`;
-  $("kmALbl").textContent=`${F} → ${V}`; $("kmBLbl").textContent=`${V} → ${T}`;
-  document.querySelectorAll(".rl").forEach(e=>e.textContent=zim?`${r.loaded} → ${r.zLoaded} L/km`:r.loaded+" L/km");
-  document.querySelectorAll(".re").forEach(e=>e.textContent=zim?`${r.empty} → ${r.zEmpty} L/km`:r.empty+" L/km");
-  document.querySelectorAll(".rl2").forEach(e=>e.textContent=zim?`${r.zLoaded} → ${r.loaded} L/km`:r.loaded+" L/km");
-  document.querySelectorAll(".re2").forEach(e=>e.textContent=zim?`${r.zEmpty} → ${r.empty} L/km`:r.empty+" L/km");
-
-  const m=$("maps");
-  if(p.from&&p.to){
-    let u="https://www.google.com/maps/dir/?api=1&travelmode=driving&origin="+encodeURIComponent(p.from)+"&destination="+encodeURIComponent(p.to);
-    if(zim&&p.via)u+="&waypoints="+encodeURIComponent(p.via);
-    m.href=u;m.removeAttribute("aria-disabled");
-  }else{m.href="https://www.google.com/maps";m.setAttribute("aria-disabled","true")}
-
-  const L=legs(), total=L.reduce((s,l)=>s+l.litres,0), km=L.reduce((s,l)=>s+l.km,0), price=num("price");
-  $("route").textContent=zim?`${F} → ${V} → ${T}${state.ret!=="none"?` → ${V} → ${F}`:""}`:`${F} → ${short(p.to)||"Destination"}${state.ret!=="none"?" → back":""}`;
+  const t=T(), L=legs(), total=L.reduce((s,l)=>s+l.litres,0), km=L.reduce((s,l)=>s+l.km,0), price=num("price");
+  const names=[t.start,...t.stops.map(s=>s.place)].concat(t.ret.on?[t.start]:[]).map(p=>short(p)||"?");
+  $("route").textContent=names.join(" → ");
   $("total").innerHTML=fmt(total)+"<small>L</small>";
-  const box=$("legLines"), keys=L.map(l=>l.key).join(",");
+  $("costTotal").innerHTML=price?`<small>TZS</small> ${fmt(total*price,0)}`:`<span class="costnote">Enter the fuel price to see the cost</span>`;
+
+  const box=$("legLines"), keys=L.map(l=>l.id).join(",");
   if(box.dataset.keys!==keys){
     box.dataset.keys=keys;
-    box.innerHTML=L.map(l=>`<div class="leg" data-k="${l.key}"><span class="ln"></span><span class="rx">×<input class="rate" type="number" inputmode="decimal" step="0.01" min="0" aria-label="Litres per km for ${esc(l.name)}" data-k="${l.key}"></span><b class="lt"></b></div>`).join("");
+    box.innerHTML=L.map(l=>`<div class="leg" data-k="${l.id}"><span class="ln"></span><span class="rx">×<input class="rate" type="number" inputmode="decimal" step="0.01" min="0" aria-label="Litres per km for this leg" data-k="${l.id}"></span><span class="lt"><b></b><small></small></span></div>`).join("");
   }
-  L.forEach(l=>{const row=box.querySelector(`.leg[data-k="${l.key}"]`), inp=row.querySelector(".rate");
-    row.querySelector(".ln").textContent=`${l.name} · ${fmt(l.km)} km`;
+  L.forEach(l=>{const row=box.querySelector(`.leg[data-k="${l.id}"]`), inp=row.querySelector(".rate");
+    row.querySelector(".ln").innerHTML=`${esc(l.name)}<small>${fmt(l.km)} km · ${l.load}${l.zone?" · Zimbabwe":""}</small>`;
     if(document.activeElement!==inp)inp.value=l.ratio;
     row.classList.toggle("edited",!!l.edited);
-    row.querySelector(".lt").textContent=fmt(l.litres)+" L";});
-  let h=`<div class="sum"><span>Total distance</span><b>${fmt(km)} km</b></div>`;
-  if(price)h+=`<div class="sum"><span>Fuel cost @ ${fmt(price,0)}/L</span><b>TZS ${fmt(total*price,0)}</b></div>`;
-  $("lines").innerHTML=h;
+    row.querySelector(".lt b").textContent=fmt(l.litres)+" L";
+    row.querySelector(".lt small").textContent=price?"TZS "+fmt(l.litres*price,0):"";});
+  $("lines").innerHTML=`<div class="sum"><span>Total distance</span><b>${fmt(km)} km</b></div>`+
+    (price?`<div class="sum"><span>Fuel cost @ ${fmt(price,0)}/L</span><b>TZS ${fmt(total*price,0)}</b></div>`:"");
   $("resetRates").hidden=!L.some(l=>l.edited);
   $("exTag").hidden=!isExample;
-  store.set("tf_prefs",{price:$("price").value,rLoaded:$("rLoaded").value,rEmpty:$("rEmpty").value,rZimE:$("rZimE").value,rZim:$("rZim").value,via:$("zVia").value,mode:state.mode});
+  updateLegTags();
+
+  const m=$("maps"), pts=[t.start,...t.stops.map(s=>s.place)].concat(t.ret.on?[t.start]:[]).map(p=>p.trim());
+  if(pts.length>=2&&pts.every(Boolean)){
+    let u="https://www.google.com/maps/dir/?api=1&travelmode=driving&origin="+encodeURIComponent(pts[0])+"&destination="+encodeURIComponent(pts[pts.length-1]);
+    const mid=pts.slice(1,-1); if(mid.length)u+="&waypoints="+encodeURIComponent(mid.join("|"));
+    m.href=u;m.removeAttribute("aria-disabled");
+  }else{m.href="https://www.google.com/maps";m.setAttribute("aria-disabled","true")}
+  store.set("tf_prefs",{price:$("price").value,rLoaded:$("rLoaded").value,rEmpty:$("rEmpty").value,rZimE:$("rZimE").value,rZim:$("rZim").value,mode:state.mode});
 }
-function esc(s){const d=document.createElement("div");d.textContent=s;return d.innerHTML}
+$("legLines").addEventListener("input",e=>{const i=e.target.closest(".rate");if(!i)return;const v=parseFloat(i.value);if(isNaN(v))delete overrides[i.dataset.k];else overrides[i.dataset.k]=v;render()});
+$("legLines").addEventListener("focusout",e=>{if(e.target.closest(".rate"))render()});
+$("resetRates").addEventListener("click",()=>{overrides={};render()});
 
 // ---- trip log ----
 function renderLog(){
   const log=store.get("tf_log2",[]);
   if(!log.length){$("logWrap").innerHTML='<p class="empty">No trips saved yet. Work out a trip above and tap “Save to trip log”.</p>';return}
   let h='<table><thead><tr><th>Date</th><th>Type</th><th>Truck</th><th>Route</th><th class="num">km</th><th class="num">Litres</th><th class="num">Cost TZS</th><th></th></tr></thead><tbody>';
-  log.forEach((t,i)=>{h+=`<tr><td>${esc(t.date)}</td><td><span class="pill ${t.type!=="Local"?"zim":""}">${t.type}</span></td><td>${esc(t.truck||"")}</td><td>${esc(t.route)}</td><td class="num">${fmt(t.km)}</td><td class="num">${fmt(t.litres)}</td><td class="num">${t.cost?fmt(t.cost,0):"—"}</td><td><button class="del" data-i="${i}" aria-label="Delete trip">×</button></td></tr>`});
+  log.forEach((t,i)=>{h+=`<tr><td>${esc(t.date)}</td><td><span class="pill ${t.type!=="Local"?"zim":""}">${esc(t.type)}</span></td><td>${esc(t.truck||"")}</td><td>${esc(t.route)}</td><td class="num">${fmt(t.km)}</td><td class="num">${fmt(t.litres)}</td><td class="num">${t.cost?fmt(t.cost,0):"—"}</td><td><button class="del" data-i="${i}" aria-label="Delete trip">×</button></td></tr>`});
   $("logWrap").innerHTML=h+"</tbody></table>";
 }
 $("logWrap").addEventListener("click",e=>{const b=e.target.closest(".del");if(!b)return;
   const log=store.get("tf_log2",[]);log.splice(+b.dataset.i,1);store.set("tf_log2",log);renderLog()});
 
 $("saveBtn").addEventListener("click",()=>{
-  const L=legs(); if(!L.some(l=>l.km)){(zimTrip()?$("kmA"):$("kmL")).focus();return}
-  const p=places(), price=num("price"), litres=L.reduce((s,l)=>s+l.litres,0);
+  const L=legs(), t=T(); if(!L.some(l=>l.km)){const k=document.querySelector("#routeTl .kmIn");k&&k.focus();setStatus("Enter or get the distances first.",true);return}
+  const price=num("price"), litres=L.reduce((s,l)=>s+l.litres,0);
   const d=new Date(), pad=n=>String(n).padStart(2,"0");
   const log=store.get("tf_log2",[]);
   log.unshift({id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),
     date:`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`,
     type:state.mode==="zim"?"South":"Local",truck:$("truck").value.trim(),
-    from:p.from,via:zimTrip()?p.via:"",to:p.to,route:$("route").textContent,
-    going:state.load,ret:state.ret,
+    from:t.start,to:(t.stops.filter(s=>!s.auto).pop()||{}).place||"",route:$("route").textContent,
     km:L.reduce((s,l)=>s+l.km,0),litres,price,cost:litres*price,
-    legs:L.map(l=>({name:l.name,load:l.load,km:l.km,ratio:l.ratio,litres:l.litres,edited:!!l.edited}))});
+    legs:L.map(l=>({name:l.name,from:l.from,to:l.to,load:l.load+(l.zone?" (Zimbabwe)":""),km:l.km,ratio:l.ratio,litres:l.litres,edited:!!l.edited}))});
   store.set("tf_log2",log.slice(0,1000));renderLog();
   const b=$("saveBtn");b.textContent="Saved";setTimeout(()=>b.textContent="Save to trip log",1500);
 });
@@ -336,36 +379,38 @@ $("saveBtn").addEventListener("click",()=>{
 // ---- Excel ----
 const r2=n=>Math.round(n*100)/100;
 $("xlsxBtn").addEventListener("click",()=>{
-  if(typeof XLSX==="undefined"){alertLog("Excel tool didn't load. Check your connection and reload.");return}
+  if(typeof XLSX==="undefined"){logMsg("Excel tool didn't load. Check your connection and reload.");return}
   const log=store.get("tf_log2",[]);
-  if(!log.length){alertLog("No trips to download yet.");return}
-  const trips=log.map(t=>({"Trip ID":t.id,"Date":t.date,"Type":t.type,"Truck":t.truck,"From":t.from,"Via":t.via,"To":t.to,
-    "Going":t.going,"Return":t.ret,"Total km":r2(t.km),"Fuel (L)":r2(t.litres),"Price/L (TZS)":t.price||"","Cost (TZS)":t.cost?Math.round(t.cost):""}));
-  const legRows=[];log.forEach(t=>(t.legs||[]).forEach((l,i)=>legRows.push({"Trip ID":t.id,"Date":t.date,"Type":t.type,"Truck":t.truck,"Leg":i+1,"Route":l.name,"Ratio type":l.load,"km":r2(l.km),"L/km":l.ratio,"Ratio edited":l.edited?"Yes":"","Fuel (L)":r2(l.litres)})));
+  if(!log.length){logMsg("No trips to download yet.");return}
+  const trips=log.map(t=>({"Trip ID":t.id,"Date":t.date,"Type":t.type,"Truck":t.truck,"Route":t.route,"Legs":(t.legs||[]).length,
+    "Total km":r2(t.km),"Fuel (L)":r2(t.litres),"Price/L (TZS)":t.price||"","Cost (TZS)":t.cost?Math.round(t.cost):""}));
+  const legRows=[];log.forEach(t=>(t.legs||[]).forEach((l,i)=>legRows.push({"Trip ID":t.id,"Date":t.date,"Type":t.type,"Truck":t.truck,"Leg":i+1,
+    "Route":l.name,"Load":l.load,"km":r2(l.km),"L/km":l.ratio,"Ratio edited":l.edited?"Yes":"","Fuel (L)":r2(l.litres),
+    "Cost (TZS)":t.price?Math.round(l.litres*t.price):""})));
   const wb=XLSX.utils.book_new();
   const ws1=XLSX.utils.json_to_sheet(trips), ws2=XLSX.utils.json_to_sheet(legRows);
-  ws1["!cols"]=[8,17,10,12,22,18,22,8,8,10,10,12,14].map(w=>({wch:w}));
-  ws2["!cols"]=[8,17,10,12,5,32,16,10,6,12,10].map(w=>({wch:w}));
+  ws1["!cols"]=[8,17,8,12,48,6,10,10,12,14].map(w=>({wch:w}));
+  ws2["!cols"]=[8,17,8,12,5,30,20,10,6,12,10,12].map(w=>({wch:w}));
   XLSX.utils.book_append_sheet(wb,ws1,"Trips");XLSX.utils.book_append_sheet(wb,ws2,"Legs");
-  const d=new Date();XLSX.writeFile(wb,`trip-fuel-log-${d.toISOString().slice(0,10)}.xlsx`);
+  XLSX.writeFile(wb,`trip-fuel-log-${new Date().toISOString().slice(0,10)}.xlsx`);
 });
 $("importFile").addEventListener("change",async e=>{
   const f=e.target.files[0]; e.target.value=""; if(!f)return;
   try{
     const wb=XLSX.read(await f.arrayBuffer());
     const trips=XLSX.utils.sheet_to_json(wb.Sheets["Trips"]||{}), legRows=XLSX.utils.sheet_to_json(wb.Sheets["Legs"]||{});
-    if(!trips.length||!("Trip ID" in trips[0])){alertLog("That file isn't a trip log from this calculator.");return}
+    if(!trips.length||!("Trip ID" in trips[0])){logMsg("That file isn't a trip log from this calculator.");return}
     const log=store.get("tf_log2",[]), have=new Set(log.map(t=>String(t.id)));let added=0;
     trips.forEach(t=>{const id=String(t["Trip ID"]);if(have.has(id))return;added++;
-      const L=legRows.filter(l=>String(l["Trip ID"])===id).map(l=>({name:l["Route"],load:l["Ratio type"],km:+l["km"]||0,ratio:+l["L/km"]||0,edited:l["Ratio edited"]==="Yes",litres:+l["Fuel (L)"]||0}));
-      log.push({id,date:String(t["Date"]||""),type:t["Type"]||"Local",truck:t["Truck"]||"",from:t["From"]||"",via:t["Via"]||"",to:t["To"]||"",
-        route:L.length?[L[0].name.split(" → ")[0],...L.map(l=>l.name.split(" → ")[1])].join(" → "):`${t["From"]} → ${t["To"]}`,
-        going:t["Going"]||"",ret:t["Return"]||"none",km:+t["Total km"]||0,litres:+t["Fuel (L)"]||0,price:+t["Price/L (TZS)"]||0,cost:+t["Cost (TZS)"]||0,legs:L})});
+      const L=legRows.filter(l=>String(l["Trip ID"])===id).map(l=>({name:l["Route"],load:l["Load"]||l["Ratio type"]||"",km:+l["km"]||0,ratio:+l["L/km"]||0,edited:l["Ratio edited"]==="Yes",litres:+l["Fuel (L)"]||0}));
+      const route=t["Route"]||(L.length?[String(L[0].name).split(" → ")[0],...L.map(l=>String(l.name).split(" → ")[1])].join(" → "):`${t["From"]||""} → ${t["To"]||""}`);
+      log.push({id,date:String(t["Date"]||""),type:t["Type"]||"Local",truck:t["Truck"]||"",route,
+        km:+t["Total km"]||0,litres:+t["Fuel (L)"]||0,price:+t["Price/L (TZS)"]||0,cost:+t["Cost (TZS)"]||0,legs:L})});
     log.sort((a,b)=>String(b.date).localeCompare(String(a.date)));
-    store.set("tf_log2",log);renderLog();alertLog(`Imported ${added} new trip${added===1?"":"s"}${trips.length-added?`, skipped ${trips.length-added} already here`:""}.`);
-  }catch(err){alertLog("Couldn't read that file. Pick an .xlsx made by Download Excel.")}
+    store.set("tf_log2",log);renderLog();logMsg(`Imported ${added} new trip${added===1?"":"s"}${trips.length-added?`, skipped ${trips.length-added} already here`:""}.`);
+  }catch(err){logMsg("Couldn't read that file. Pick an .xlsx made by Download Excel.")}
 });
-function alertLog(t){let p=$("logMsg");if(!p){p=document.createElement("p");p.id="logMsg";p.className="status";p.setAttribute("role","status");$("logWrap").before(p)}p.textContent=t}
+function logMsg(t){let p=$("logMsg");if(!p){p=document.createElement("p");p.id="logMsg";p.className="status";p.setAttribute("role","status");$("logWrap").before(p)}p.textContent=t}
 
 // ---- Google Maps (Routes) ----
 let mapsPromise=null, authFailed=false;
@@ -388,59 +433,46 @@ async function routeKm(Route,o,d){
   return{km:routes[0].distanceMeters/1000,mins:Math.round((routes[0].durationMillis||0)/60000)};
 }
 const hm=m=>m>=60?Math.floor(m/60)+" h "+(m%60)+" min":m+" min";
-async function getDistance(){
-  const p=places(), key=$("apiKey").value.trim(), zim=zimTrip();
-  if(!p.from||!p.to||(zim&&!p.via)){setStatus(zim?"Enter From, Via and To first.":"Enter both From and To first.",true);return}
+async function getDistances(){
+  const t=T(), key=$("apiKey").value.trim();
+  if(!t.start.trim()||t.stops.some(s=>!s.place.trim())){setStatus("Fill in the start and every destination first.",true);return}
   if(!key){$("settings").open=true;$("apiKey").focus();setStatus("Add your Google Maps API key in Settings first.",true);return}
-  const btn=$("getDist");btn.disabled=true;btn.textContent="Getting…";setStatus("Asking Google Maps for the driving route…");
+  const added=ensureLusaka(); if(added)renderStops();
+  const btn=$("getDist");btn.disabled=true;btn.textContent="Getting…";setStatus("Asking Google Maps for the driving routes…");
   try{
     await loadMaps(key);
     const {Route}=await google.maps.importLibrary("routes");
-    if(!zim){
-      const a=await routeKm(Route,p.from,p.to);
-      $("kmL").value=a.km.toFixed(1);
-      setStatus(`Google Maps: ${fmt(a.km)} km by road, about ${hm(a.mins)} driving.`);
-    }else{
-      const [a,b]=await Promise.all([routeKm(Route,p.from,p.via),routeKm(Route,p.via,p.to)]);
-      $("kmA").value=a.km.toFixed(1);$("kmB").value=b.km.toFixed(1);
-      setStatus(`Google Maps: ${short(p.from)} → ${short(p.via)} ${fmt(a.km)} km (${hm(a.mins)}), ${short(p.via)} → ${short(p.to)} ${fmt(b.km)} km (${hm(b.mins)}).`);
-    }
-    isExample=false;render();
+    const L=legs();
+    const res=await Promise.all(L.map(l=>routeKm(Route,l.from,l.to)));
+    L.forEach((l,i)=>{findStop(l.id).km=res[i].km.toFixed(1)});
+    const mins=res.reduce((s,r)=>s+r.mins,0);
+    isExample=false;renderStops();render();
+    setStatus(`Google Maps: ${L.length} leg${L.length>1?"s":""}, ${fmt(res.reduce((s,r)=>s+r.km,0))} km in total, about ${hm(mins)} driving.${added?" Lusaka was added as a stop for the Zimbabwe route.":""}`);
   }catch(e){
     if(authFailed)return;
     if(e&&e.message==="load")setStatus("Couldn't load Google Maps. Check your internet connection and try again.",true);
-    else setStatus("Google Maps couldn't work out this route ("+((e&&e.message)||"unknown error")+"). Check the place names, e.g. add the country.",true);
-  }finally{btn.disabled=false;btn.textContent="Get distance"}
+    else setStatus("Google Maps couldn't work out a route ("+((e&&e.message)||"unknown error")+"). Check the place names, e.g. add the country.",true);
+  }finally{btn.disabled=false;btn.textContent="Get distances"}
 }
-$("getDist").addEventListener("click",getDistance);
-["lFrom","lTo","zFrom","zVia","zTo"].forEach(id=>$(id).addEventListener("keydown",e=>{if(e.key==="Enter")getDistance()}));
+$("getDist").addEventListener("click",getDistances);
 $("apiKey").addEventListener("change",()=>{const k=$("apiKey").value.trim();store.set("tf_key",k);setStatus(mapsPromise?"Key saved. Reload the page to use the new key.":(k?"Key saved on this device.":""))});
 
 // ---- controls ----
-$("mode").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;state.mode=b.dataset.v;clearOverrides();setSeg("mode",state.mode);setStatus("");render()});
-$("load").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;state.load=b.dataset.v;clearOverrides();setSeg("load",state.load);render()});
-$("ret").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;state.ret=b.dataset.v;clearOverrides();setSeg("ret",state.ret);render()});
-["lFrom","lTo","zFrom","zVia","zTo","kmL","kmA","kmB"].forEach(id=>$(id).addEventListener("input",()=>{isExample=false;render()}));
-$("zTo").addEventListener("input",()=>{const z=looksZim($("zTo").value);if(z!==$("zimRoute").checked){$("zimRoute").checked=z;render()}});
-$("zimRoute").addEventListener("change",()=>{clearOverrides();render()});
-$("legLines").addEventListener("input",e=>{const i=e.target.closest(".rate");if(!i)return;const v=parseFloat(i.value);if(isNaN(v))delete overrides[i.dataset.k];else overrides[i.dataset.k]=v;render()});
-$("legLines").addEventListener("focusout",e=>{if(e.target.closest(".rate"))render()});
-$("resetRates").addEventListener("click",()=>{clearOverrides();render()});
+$("mode").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;state.mode=b.dataset.v;overrides={};setSeg($("mode"),state.mode);setStatus("");renderStops();render()});
 ["price","rLoaded","rEmpty","rZimE","rZim","truck"].forEach(id=>$(id).addEventListener("input",render));
 
 // ---- start ----
 const pr=store.get("tf_prefs",{});
 $("rLoaded").value=pr.rLoaded||"0.5";$("rEmpty").value=pr.rEmpty||"0.3";$("rZimE").value=pr.rZimE||"0.5";$("rZim").value=pr.rZim||"0.7";
-$("price").value=pr.price||"";$("zVia").value=pr.via||"Lusaka, Zambia";state.mode=pr.mode||"local";
+$("price").value=pr.price||"";state.mode=pr.mode||"local";
 $("apiKey").value=store.get("tf_key","");
 if(!$("apiKey").value)setStatus("Add your Google Maps API key in Settings to get distances automatically.");
 if(!store.get("tf_log2",[]).length){
   isExample=true;
-  $("lFrom").value="Dar es Salaam, Tanzania";$("lTo").value="Nairobi, Kenya";$("kmL").value="880";
-  $("zFrom").value="Nairobi, Kenya";$("zTo").value="Harare, Zimbabwe";$("kmA").value="2400";$("kmB").value="490";$("kmL").value="880";
+  state.trips.local={start:"Dar es Salaam, Tanzania",stops:[newStop("Nairobi, Kenya","loaded","880")],ret:{on:true,id:nid(),load:"empty",km:"880"}};
+  state.trips.zim={start:"Nairobi, Kenya",stops:[newStop("Lusaka, Zambia","loaded","2400"),newStop("Harare, Zimbabwe","loaded","490"),newStop("Lusaka, Zambia","empty","490",true)],ret:{on:true,id:nid(),load:"empty",km:"2400"}};
 }
-$("zimRoute").checked=looksZim($("zTo").value);
-setSeg("mode",state.mode);setSeg("load",state.load);setSeg("ret",state.ret);render();renderLog();
+setSeg($("mode"),state.mode);renderStops();render();renderLog();
 </script>
 </body>
 </html>
