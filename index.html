@@ -106,6 +106,7 @@ input:focus-visible,button:focus-visible,a:focus-visible{outline:2px solid var(-
 .leg.edited .rate{background:var(--amber);color:#1a1205;border-color:var(--amber)}
 .ratenote{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:.82rem;opacity:.85;flex-wrap:wrap}
 .ratenote button{font:600 .85rem var(--body);background:none;color:inherit;border:1px solid color-mix(in srgb,var(--sign-fg) 50%,transparent);border-radius:6px;padding:6px 10px;cursor:pointer}
+.waiting{margin:0;font-size:.95rem;line-height:1.5;opacity:.9;padding:6px 0 4px}
 .tag{align-self:flex-start;font:600 .7rem var(--body);letter-spacing:.08em;text-transform:uppercase;background:var(--amber);color:#1a1205;border-radius:4px;padding:3px 8px}
 .save{font:600 1rem var(--body);background:var(--panel);color:var(--fg);border:0;border-radius:8px;padding:12px;min-height:48px;cursor:pointer}
 
@@ -180,14 +181,14 @@ details[open] summary{margin-bottom:12px}
     </section>
 
     <section class="ticket" aria-live="polite">
-      <span class="tag" id="exTag">Example figures</span>
       <div class="route" id="route">—</div>
-      <div class="totals">
+      <p class="waiting" id="waiting">Enter the start, the destination and the km for each leg (or tap Get distances). The fuel and cost will show here.</p>
+      <div class="totals" id="calcTotals">
         <div><div class="lbl">Fuel, full trip</div><div class="big" id="total">0<small>L</small></div></div>
         <div><div class="lbl">Fuel cost, full trip</div><div class="big cost" id="costTotal">—</div></div>
       </div>
-      <div class="lines"><div id="legLines"></div><div id="lines"></div></div>
-      <div class="ratenote"><span>Tap a ratio to change it for this trip.</span><button type="button" id="resetRates" hidden>Reset ratios</button></div>
+      <div class="lines" id="calcLines"><div id="legLines"></div><div id="lines"></div></div>
+      <div class="ratenote" id="rateNote"><span>Tap a ratio to change it for this trip.</span><button type="button" id="resetRates" hidden>Reset ratios</button></div>
       <button class="save" id="saveBtn" type="button">Save to trip log</button>
     </section>
   </div>
@@ -342,7 +343,7 @@ $("routeTl").addEventListener("click",e=>{
 function render(){
   const t=T(), L=legs(), driving=L.reduce((s,l)=>s+l.litres,0), handle=handlingL(driving), total=driving+handle, km=L.reduce((s,l)=>s+l.km,0), price=num("price");
   const names=[t.start,...t.stops.map(s=>s.place)].concat(t.ret.on?[t.start]:[]).map(p=>short(p)||"?");
-  $("route").textContent=names.join(" → ");
+  $("route").textContent=t.stops.some(x=>x.place.trim())?names.join(" → "):(state.mode==="zim"?"New South trip":"New local trip");
   $("total").innerHTML=fmt(total)+"<small>L</small>";
   $("costTotal").innerHTML=price?`<small>TZS</small> ${fmt(total*price,0)}`:`<span class="costnote">Enter the fuel price to see the cost</span>`;
 
@@ -360,7 +361,10 @@ function render(){
   $("lines").innerHTML=`<div class="sum"><span>Total distance</span><b>${fmt(km)} km</b></div><div><span>Fuel for driving</span><b>${fmt(driving)} L</b></div><div><span>Offloading/loading fuel</span><b>${fmt(handle,0)} L</b></div><div class="sum"><span>Total fuel</span><b>${fmt(total)} L</b></div>`+
     (price?`<div class="sum"><span>Fuel cost @ ${fmt(price,0)}/L</span><b>TZS ${fmt(total*price,0)}</b></div>`:"");
   $("resetRates").hidden=!L.some(l=>l.edited);
-  $("exTag").hidden=!isExample;
+  // Show figures only once a start, a destination and some km have been entered
+  const ready=!!t.start.trim()&&t.stops.some(x=>x.place.trim())&&km>0;
+  ["calcTotals","calcLines","rateNote","saveBtn"].forEach(id=>$(id).hidden=!ready);
+  $("waiting").hidden=ready;
   updateLegTags();
 
   const m=$("maps"), pts=[t.start,...t.stops.map(s=>s.place)].concat(t.ret.on?[t.start]:[]).map(p=>p.trim());
@@ -501,11 +505,6 @@ $("rLoaded").value=pr.rLoaded||"0.5";$("rEmpty").value=pr.rEmpty||"0.3";$("rZimE
 $("price").value=pr.price||"";state.mode=pr.mode||"local";
 $("apiKey").value=store.get("tf_key","");
 if(!$("apiKey").value)setStatus("Add your Google Maps API key in Settings to get distances automatically.");else saveKey(false);
-if(!store.get("tf_log2",[]).length){
-  isExample=true;
-  state.trips.local={start:"Dar es Salaam, Tanzania",stops:[newStop("Nairobi, Kenya","loaded","880")],ret:{on:true,id:nid(),load:"empty",km:"880"}};
-  state.trips.zim={start:"Nairobi, Kenya",stops:[newStop("Lusaka, Zambia","loaded","2400"),newStop("Harare, Zimbabwe","loaded","490"),newStop("Lusaka, Zambia","empty","490",true)],ret:{on:true,id:nid(),load:"empty",km:"2400"}};
-}
 setSeg($("mode"),state.mode);renderStops();render();renderLog();
 </script>
 </body>
