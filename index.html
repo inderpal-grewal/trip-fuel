@@ -73,6 +73,11 @@ input:focus-visible,button:focus-visible,a:focus-visible{outline:2px solid var(-
 .leg-tag{grid-column:1/-1;font-size:.78rem;color:var(--muted)}
 .leg-tag b{color:var(--amber);font-weight:600}
 @media (max-width:420px){.leg-body{grid-template-columns:1fr}}
+.picks{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 2px 44px}
+.picks .lbl{width:100%}
+.pick{font:600 .88rem var(--body);background:var(--field);color:var(--fg);border:1px solid var(--line);border-radius:999px;padding:6px 12px;min-height:36px;cursor:pointer}
+.pick.zw{border-color:var(--amber)}
+.pick[aria-pressed="true"]{background:var(--sign);color:var(--sign-fg);border-color:var(--sign)}
 .addrow{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px}
 .addrow .ghost{min-height:44px;padding:8px 10px;font-size:.92rem}
 
@@ -220,8 +225,10 @@ const LUSAKA="Lusaka, Zambia";
 // ---- trip model: a start, a list of stops, and an optional return to start ----
 let uid=0; const nid=()=>"s"+(++uid);
 const newStop=(place="",load="loaded",km="",auto=false)=>({id:nid(),place,load,km,auto});
-const blankTrip=()=>({start:"",stops:[newStop()],ret:{on:true,id:nid(),load:"empty",km:""}});
-let state={mode:"local",trips:{local:blankTrip(),zim:blankTrip()}};
+const SOUTH_START="Nairobi, Kenya";
+const blankTrip=(start="")=>({start,stops:[newStop()],ret:{on:true,id:nid(),load:"empty",km:""}});
+let state={mode:"local",trips:{local:blankTrip(),zim:blankTrip(SOUTH_START)}};
+const SOUTH_PICKS=[["Lusaka","Lusaka, Zambia"],["Ndola","Ndola, Zambia"],["Kitwe","Kitwe, Zambia"],["Lubumbashi","Lubumbashi, DR Congo"],["Kolwezi","Kolwezi, DR Congo"],["Lilongwe","Lilongwe, Malawi"],["Blantyre","Blantyre, Malawi"],["Harare","Harare, Zimbabwe"],["Bulawayo","Bulawayo, Zimbabwe"]];
 const T=()=>state.trips[state.mode];
 let isExample=false;
 let overrides={}; // per-leg ratio changes for the current trip only
@@ -266,6 +273,10 @@ function renderStops(){
   const t=T(), list=state.mode==="zim"?"southPlaces":"localPlaces";
   let h=`<div class="pt"><span class="pin start">S</span><div class="pt-body"><label for="startIn">Start</label>
     <input id="startIn" class="place" data-id="start" list="${list}" autocomplete="off" placeholder="${state.mode==="zim"?"e.g. Nairobi, Kenya":"e.g. Dar es Salaam, Tanzania"}" value="${esc(t.start)}"></div></div>`;
+  if(state.mode==="zim"){
+    const dest=(t.stops.filter(s=>!s.auto).pop()||{}).place||"";
+    h+=`<div class="picks"><span class="lbl">Quick pick destination (or type any town below)</span>`+SOUTH_PICKS.map(([n,v])=>`<button type="button" class="pick${looksZim(v)?" zw":""}" data-pick="${esc(v)}" aria-pressed="${dest===v}">${n}${looksZim(v)?" · ZW":""}</button>`).join("")+`</div>`;
+  }
   t.stops.forEach((s,i)=>{
     h+=legRow(s);
     h+=`<div class="pt"><span class="pin${s.auto?" auto":""}">${i+1}</span><div class="pt-body"><label for="in_${s.id}">${s.auto?"Via (added: Zimbabwe trucks pass Lusaka)":"Destination "+(i+1)}</label>
@@ -317,6 +328,14 @@ $("routeTl").addEventListener("click",e=>{
   if(e.target.id==="addStop"){while(t.stops.length&&t.stops[t.stops.length-1].auto)t.stops.pop();t.ret.km="";t.stops.push(newStop("",t.stops.length?t.stops[t.stops.length-1].load:"loaded"));renderStops();render();
     const ins=document.querySelectorAll("#routeTl .place");ins[ins.length-1].focus();return}
   if(e.target.id==="retToggle"){t.ret.on=true;t.ret.km="";renderStops();render();return}
+  const pk=e.target.closest("[data-pick]");
+  if(pk){ // set the final destination, then rebuild any Lusaka stops for it
+    t.stops=t.stops.filter(s=>!s.auto); if(!t.stops.length)t.stops.push(newStop());
+    const last=t.stops[t.stops.length-1]; last.place=pk.dataset.pick;
+    t.stops.forEach(s=>s.km=""); t.ret.km=""; overrides={}; isExample=false;
+    const added=ensureLusaka(); renderStops(); render();
+    setStatus(added?"Lusaka added as a stop. Lusaka ⇄ Zimbabwe uses the Zimbabwe rate. Tap Get distances.":"Destination set. Tap Get distances.");
+    return}
 });
 
 // ---- ticket ----
@@ -473,7 +492,7 @@ $("apiKey").addEventListener("change",()=>saveKey(true));
 $("saveKey").addEventListener("click",()=>saveKey(true));
 
 // ---- controls ----
-$("mode").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;state.mode=b.dataset.v;overrides={};setSeg($("mode"),state.mode);setStatus("");renderStops();render()});
+$("mode").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;state.mode=b.dataset.v;overrides={};if(state.mode==="zim"&&!T().start.trim())T().start=SOUTH_START;setSeg($("mode"),state.mode);setStatus("");renderStops();render()});
 ["price","rLoaded","rEmpty","rZimE","rZim","rHandle","truck"].forEach(id=>$(id).addEventListener("input",render));
 
 // ---- start ----
